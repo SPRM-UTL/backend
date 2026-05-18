@@ -1,6 +1,7 @@
 using backend.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
+using backend.Middleware;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -22,6 +23,8 @@ if (!app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 app.UseRouting();
+
+app.UseMiddleware<RequestMiddleware>();
 
 app.UseAuthorization();
 
