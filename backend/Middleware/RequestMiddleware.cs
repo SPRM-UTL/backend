@@ -1,4 +1,6 @@
-﻿using System.Text;
+﻿using backend.Models;
+using Microsoft.EntityFrameworkCore;
+using System.Text;
 using System.Text.Json;
 
 namespace backend.Middleware
@@ -12,10 +14,29 @@ namespace backend.Middleware
             _next = next;
         }
 
-        public async Task InvokeAsync(HttpContext context)
+        public async Task InvokeAsync(HttpContext context, PruebaaspContext db)
         {
             if (context.Request.Path.StartsWithSegments("/api"))
             {
+                if (!context.Request.Path.Equals("/api/Auth/login"))
+                {
+                    var authorization = context.Request.Headers["Authorization"].ToString();
+                    var token = await db.Token
+                        .FirstOrDefaultAsync(t => t.Cadena == authorization);
+
+                    if (token == null || token.FechaExpiracion < DateTime.Now)
+                    {
+                        context.Response.StatusCode = 401;
+
+                        await context.Response.WriteAsync(
+                            "No autorizado"
+                        );
+                        return;
+                    }
+                    token.FechaExpiracion = DateTime.Now.AddMinutes(30);
+                    await db.SaveChangesAsync();
+                }
+
                 var originalBodyStream = context.Response.Body;
 
                 using var responseBody = new MemoryStream();
