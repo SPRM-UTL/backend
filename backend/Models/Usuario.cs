@@ -1,4 +1,5 @@
-﻿using System;
+﻿using NuGet.Common;
+using System;
 using System.Collections.Generic;
 
 namespace backend.Models;
@@ -9,7 +10,9 @@ public partial class Usuario
 
     public string? Nombre { get; set; }
 
-    public int? Edad { get; set; }
+    public string? Correo { get; set; }
 
-    public DateTime? Fecha { get; set; }
+    public string? Contrasenia { get; set; }
+
+    public List<Token>? Tokens { get; set; }
 }

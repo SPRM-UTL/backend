@@ -17,6 +17,7 @@ public partial class PruebaaspContext : DbContext
     }
 
     public virtual DbSet<Usuario> Usuarios { get; set; }
+    public virtual DbSet<Token> Token { get; set; }
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
 #warning To protect potentially sensitive information in your connection string, you should move it out of source code. You can avoid scaffolding the connection string by using the Name= syntax to read it from configuration - see https://go.microsoft.com/fwlink/?linkid=2131148. For more guidance on storing connection strings, see https://go.microsoft.com/fwlink/?LinkId=723263.
@@ -35,10 +36,6 @@ public partial class PruebaaspContext : DbContext
             entity.ToTable("usuarios");
 
             entity.Property(e => e.Id).HasColumnName("id");
-            entity.Property(e => e.Edad).HasColumnName("edad");
-            entity.Property(e => e.Fecha)
-                .HasColumnType("datetime")
-                .HasColumnName("fecha");
             entity.Property(e => e.Nombre)
                 .HasMaxLength(255)
                 .HasColumnName("nombre");
