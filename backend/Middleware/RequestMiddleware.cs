@@ -18,7 +18,9 @@ namespace backend.Middleware
         {
             if (context.Request.Path.StartsWithSegments("/api"))
             {
-                if (!context.Request.Path.Equals("/api/Auth/login"))
+                if (!context.Request.Path.Equals("/api/Auth/login")
+                    &&
+                    !context.Request.Path.Equals("/api/Auth/register"))
                 {
                     var authorization = context.Request.Headers["Authorization"].ToString();
                     var token = await db.Token
