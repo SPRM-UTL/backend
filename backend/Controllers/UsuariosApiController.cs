@@ -1,11 +1,12 @@
-﻿using System;
+﻿using backend.Models;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using backend.Models;
 
 namespace backend.Controllers
 {
@@ -77,10 +78,30 @@ namespace backend.Controllers
         [HttpPost]
         public async Task<ActionResult<Usuario>> PostUsuario(Usuario usuario)
         {
+            var existeCorreo = await _context.Usuarios
+                .AnyAsync(u => u.Correo == usuario.Correo);
+
+            if (existeCorreo)
+            {
+                return BadRequest("El correo ya está registrado");
+            }
+
+            var hasher = new PasswordHasher<Usuario>();
+
+            usuario.Contrasenia = hasher.HashPassword(
+                usuario,
+                usuario.Contrasenia
+            );
+
             _context.Usuarios.Add(usuario);
+
             await _context.SaveChangesAsync();
 
-            return CreatedAtAction("GetUsuario", new { id = usuario.Id }, usuario);
+            return CreatedAtAction(
+                "GetUsuario",
+                new { id = usuario.Id },
+                usuario
+            );
         }
 
         // DELETE: api/UsuariosApi/5
