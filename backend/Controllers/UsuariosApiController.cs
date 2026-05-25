@@ -39,7 +39,12 @@ namespace backend.Controllers
                 return NotFound();
             }
 
-            return usuario;
+            return Ok(new
+            {
+                id = usuario.Id,
+                nombre = usuario.Nombre,
+                correo = usuario.Correo
+            });
         }
 
         // PUT: api/UsuariosApi/5
@@ -49,10 +54,23 @@ namespace backend.Controllers
         {
             if (id != usuario.Id)
             {
-                return BadRequest();
+                return BadRequest("El ID de la ruta no coincide con el del usuario.");
             }
 
-            _context.Entry(usuario).State = EntityState.Modified;
+            var usuarioExistente = await _context.Usuarios.FindAsync(id);
+            if (usuarioExistente == null)
+            {
+                return NotFound("Usuario no encontrado.");
+            }
+
+            usuarioExistente.Nombre = usuario.Nombre;
+            usuarioExistente.Correo = usuario.Correo;
+
+            if (!string.IsNullOrWhiteSpace(usuario.Contrasenia))
+            {
+                var hasher = new PasswordHasher<Usuario>();
+                usuarioExistente.Contrasenia = hasher.HashPassword(usuarioExistente, usuario.Contrasenia);
+            }
 
             try
             {
@@ -70,7 +88,10 @@ namespace backend.Controllers
                 }
             }
 
-            return NoContent();
+            return Ok(new
+            {
+                mensaje = "Perfil actualizado correctamente"
+            });
         }
 
         // POST: api/UsuariosApi

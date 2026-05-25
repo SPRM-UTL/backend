@@ -57,8 +57,8 @@ namespace backend.Controllers
 
             return Ok(new
             {
-                id = usuario.Id,
-                nombre = usuario.Nombre,
+                id = usu.Id,
+                nombre = usu.Nombre,
                 token
             });
         }
