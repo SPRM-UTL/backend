@@ -19,6 +19,9 @@ namespace backend.Models
 
         [MaxLength(50)]
         public string comando_bluetooth { get; set; }
+        
+        [MaxLength(50)]
+        public string? icono { get; set; }
 
         [JsonIgnore]
         public List<Fact_Historico_Actividad>? Historico_Actividad { get; set; }
