@@ -9,17 +9,17 @@ namespace backend.Models
         public int sk_aparato_id { get; set; }
 
         [MaxLength(100)]
-        public string nombre_aparato { get; set; }
+        public string? nombre_aparato { get; set; }
 
         [MaxLength(50)]
-        public string tipo_aparato { get; set; }
+        public string? tipo_aparato { get; set; }
 
         [MaxLength(100)]
-        public string accion_nombre { get; set; }
+        public string? accion_nombre { get; set; }
 
         [MaxLength(50)]
-        public string comando_bluetooth { get; set; }
-        
+        public string? comando_bluetooth { get; set; }
+
         [MaxLength(50)]
         public string? icono { get; set; }
 

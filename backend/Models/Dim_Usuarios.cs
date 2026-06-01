@@ -7,22 +7,27 @@ namespace backend.Models
     {
         [Key]
         public int sk_usuario_id {  get; set; }
-        public int bk_usuario_id { get; set; }
 
         [MaxLength(100)]
-        public string nombre_usuario { get; set; }
+        public string? nombre_usuario { get; set; }
 
         [MaxLength(150)]
-        public string email_usuario { get; set; }
+        public string? email_usuario { get; set; }
+        
+        [MaxLength(500)]
+        public string? contrasenia { get; set; }
 
         [MaxLength(100)]
-        public string nombre_arduino{ get; set; }
+        public string? nombre_arduino{ get; set; }
 
         [MaxLength(17)]
-        public string mac_address_usuario { get; set; }
+        public string? mac_address_usuario { get; set; }
 
         [JsonIgnore]
         public List<Fact_Historico_Actividad>? Historico_Actividad { get; set; }
+        
+        [JsonIgnore]
+        public List<Token>? Tokens { get; set; }
 
     }
 }

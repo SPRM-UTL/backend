@@ -1,4 +1,5 @@
 ﻿using backend.Models;
+using backend.DTOs; // Acceso a tus DTOs en español
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -23,53 +24,59 @@ namespace backend.Controllers
 
         // GET: api/UsuariosApi
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<Usuario>>> GetUsuarios()
+        public async Task<ActionResult<IEnumerable<object>>> GetUsuarios()
         {
-            return await _context.Usuarios.ToListAsync();
+            // Proyectamos a un objeto anónimo manteniendo la estructura JSON que Angular ya consume
+            return await _context.Dim_Usuario
+                .Select(u => new
+                {
+                    id = u.sk_usuario_id,
+                    nombre = u.nombre_usuario,
+                    correo = u.email_usuario
+                })
+                .ToListAsync();
         }
 
         // GET: api/UsuariosApi/5
         [HttpGet("{id}")]
-        public async Task<ActionResult<Usuario>> GetUsuario(int id)
+        public async Task<ActionResult> GetUsuario(int id)
         {
-            var usuario = await _context.Usuarios.FindAsync(id);
+            var usuario = await _context.Dim_Usuario
+                .Where(u => u.sk_usuario_id == id)
+                .Select(u => new
+                {
+                    id = u.sk_usuario_id,
+                    nombre = u.nombre_usuario,
+                    correo = u.email_usuario
+                })
+                .FirstOrDefaultAsync();
 
             if (usuario == null)
             {
                 return NotFound();
             }
 
-            return Ok(new
-            {
-                id = usuario.Id,
-                nombre = usuario.Nombre,
-                correo = usuario.Correo
-            });
+            return Ok(usuario);
         }
 
         // PUT: api/UsuariosApi/5
-        // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
         [HttpPut("{id}")]
-        public async Task<IActionResult> PutUsuario(int id, Usuario usuario)
+        public async Task<IActionResult> PutUsuario(int id, [FromBody] RegisterDto dto)
         {
-            if (id != usuario.Id)
-            {
-                return BadRequest("El ID de la ruta no coincide con el del usuario.");
-            }
-
-            var usuarioExistente = await _context.Usuarios.FindAsync(id);
+            // Nota: Reutilizamos RegisterDto ya que contiene Nombre, Correo y Contrasenia
+            var usuarioExistente = await _context.Dim_Usuario.FindAsync(id);
             if (usuarioExistente == null)
             {
                 return NotFound("Usuario no encontrado.");
             }
 
-            usuarioExistente.Nombre = usuario.Nombre;
-            usuarioExistente.Correo = usuario.Correo;
+            usuarioExistente.nombre_usuario = dto.Nombre;
+            usuarioExistente.email_usuario = dto.Correo;
 
-            if (!string.IsNullOrWhiteSpace(usuario.Contrasenia))
+            if (!string.IsNullOrWhiteSpace(dto.Contrasenia))
             {
-                var hasher = new PasswordHasher<Usuario>();
-                usuarioExistente.Contrasenia = hasher.HashPassword(usuarioExistente, usuario.Contrasenia);
+                var hasher = new PasswordHasher<Dim_Usuarios>();
+                usuarioExistente.contrasenia = hasher.HashPassword(usuarioExistente, dto.Contrasenia);
             }
 
             try
@@ -95,33 +102,33 @@ namespace backend.Controllers
         }
 
         // POST: api/UsuariosApi
-        // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
         [HttpPost]
-        public async Task<ActionResult<Usuario>> PostUsuario(Usuario usuario)
+        public async Task<ActionResult> PostUsuario([FromBody] RegisterDto dto)
         {
-            var existeCorreo = await _context.Usuarios
-                .AnyAsync(u => u.Correo == usuario.Correo);
+            var existeCorreo = await _context.Dim_Usuario
+                .AnyAsync(u => u.email_usuario == dto.Correo);
 
             if (existeCorreo)
             {
                 return BadRequest("El correo ya está registrado");
             }
 
-            var hasher = new PasswordHasher<Usuario>();
+            var nuevoUsuario = new Dim_Usuarios
+            {
+                nombre_usuario = dto.Nombre,
+                email_usuario = dto.Correo
+            };
 
-            usuario.Contrasenia = hasher.HashPassword(
-                usuario,
-                usuario.Contrasenia
-            );
+            var hasher = new PasswordHasher<Dim_Usuarios>();
+            nuevoUsuario.contrasenia = hasher.HashPassword(nuevoUsuario, dto.Contrasenia);
 
-            _context.Usuarios.Add(usuario);
-
+            _context.Dim_Usuario.Add(nuevoUsuario);
             await _context.SaveChangesAsync();
 
             return CreatedAtAction(
                 "GetUsuario",
-                new { id = usuario.Id },
-                usuario
+                new { id = nuevoUsuario.sk_usuario_id },
+                new { id = nuevoUsuario.sk_usuario_id, nombre = nuevoUsuario.nombre_usuario, correo = nuevoUsuario.email_usuario }
             );
         }
 
@@ -129,13 +136,13 @@ namespace backend.Controllers
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteUsuario(int id)
         {
-            var usuario = await _context.Usuarios.FindAsync(id);
+            var usuario = await _context.Dim_Usuario.FindAsync(id);
             if (usuario == null)
             {
                 return NotFound();
             }
 
-            _context.Usuarios.Remove(usuario);
+            _context.Dim_Usuario.Remove(usuario);
             await _context.SaveChangesAsync();
 
             return NoContent();
@@ -143,7 +150,7 @@ namespace backend.Controllers
 
         private bool UsuarioExists(int id)
         {
-            return _context.Usuarios.Any(e => e.Id == id);
+            return _context.Dim_Usuario.Any(e => e.sk_usuario_id == id);
         }
     }
 }
