@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using Microsoft.EntityFrameworkCore;
-using Pomelo.EntityFrameworkCore.MySql.Scaffolding.Internal;
 
 namespace backend.Models;
 
@@ -16,7 +15,6 @@ public partial class PruebaaspContext : DbContext
     {
     }
 
-    public virtual DbSet<Usuario> Usuarios { get; set; }
     public virtual DbSet<Token> Token { get; set; }
     public virtual DbSet<Dim_Usuarios> Dim_Usuario { get; set; }
     public virtual DbSet<Dim_Gestos> Dim_Gesto { get; set; }
@@ -34,16 +32,31 @@ public partial class PruebaaspContext : DbContext
             .UseCollation("utf8mb4_unicode_ci")
             .HasCharSet("utf8mb4");
 
-        modelBuilder.Entity<Usuario>(entity =>
+        // 🔥 OBLIGAMOS A ENTIY FRAMEWORK A MAPEAR CORRECTAMENTE TU MODELO ANALÍTICO
+        modelBuilder.Entity<Dim_Usuarios>(entity =>
         {
-            entity.HasKey(e => e.Id).HasName("PRIMARY");
+            // Definimos la llave primaria explícita
+            entity.HasKey(e => e.sk_usuario_id);
 
-            entity.ToTable("usuarios");
+            // Le indicamos el nombre exacto de la tabla física en MySQL
+            entity.ToTable("dim_usuario");
 
-            entity.Property(e => e.Id).HasColumnName("id");
-            entity.Property(e => e.Nombre)
-                .HasMaxLength(255)
-                .HasColumnName("nombre");
+            // Forzamos las propiedades y longitudes basadas en tus DataAnnotations
+            entity.Property(e => e.sk_usuario_id).HasColumnName("sk_usuario_id");
+            entity.Property(e => e.nombre_usuario).HasMaxLength(100).HasColumnName("nombre_usuario");
+            entity.Property(e => e.email_usuario).HasMaxLength(150).HasColumnName("email_usuario");
+            entity.Property(e => e.nombre_arduino).HasMaxLength(100).HasColumnName("nombre_arduino");
+            entity.Property(e => e.mac_address_usuario).HasMaxLength(17).HasColumnName("mac_address_usuario");
+
+            // 🚨 AQUÍ ESTÁ EL TRUCO: Forzamos la existencia física de la columna en la BD
+            entity.Property(e => e.contrasenia).HasMaxLength(500).HasColumnName("contrasenia");
+        });
+
+        // Configuración para la tabla de Tokens de sesión
+        modelBuilder.Entity<Token>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.ToTable("token");
         });
 
         OnModelCreatingPartial(modelBuilder);

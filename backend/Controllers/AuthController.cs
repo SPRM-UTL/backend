@@ -1,11 +1,12 @@
 ﻿using backend.Models;
+using backend.DTOs;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.VisualStudio.Web.CodeGenerators.Mvc.Templates.BlazorIdentity.Pages;
-using NuGet.Protocol;
+using System;
 using System.Security.Cryptography;
+using System.Threading.Tasks;
 
 namespace backend.Controllers
 {
@@ -21,46 +22,73 @@ namespace backend.Controllers
         }
 
         [HttpPost("login")]
-        public async Task<ActionResult<Token>> Login(Usuario usuario)
+        public async Task<ActionResult> Login([FromBody] LoginDto dto)
         {
-            var usu = await _context.Usuarios
-                .FirstOrDefaultAsync(u => u.Correo == usuario.Correo);
+            var usu = await _context.Dim_Usuario
+                .FirstOrDefaultAsync(u => u.email_usuario == dto.Correo);
 
-            if (usu == null) { 
+            if (usu == null)
+            {
                 return NotFound("Usuario no encontrado");
             }
 
-            var hasher = new PasswordHasher<Usuario>();
-
+            var hasher = new PasswordHasher<Dim_Usuarios>();
             var resultado = hasher.VerifyHashedPassword(
                 usu,
-                usu.Contrasenia,
-                usuario.Contrasenia
+                usu.contrasenia ?? "",
+                dto.Contrasenia ?? ""
             );
 
-            if(resultado == PasswordVerificationResult.Failed)
+            if (resultado == PasswordVerificationResult.Failed)
             {
                 return NotFound("Credenciales inválidas");
             }
 
             var numeros = RandomNumberGenerator.GetBytes(32);
+            string tokenCadena = Convert.ToBase64String(numeros);
 
-            string token = Convert.ToBase64String(numeros);
-
-            Token n_token = new Token();
-            n_token.Cadena = token;
-            n_token.UsuarioId = usu.Id;
-            n_token.FechaExpiracion = DateTime.Now.AddMinutes(30);
+            Token n_token = new Token
+            {
+                Cadena = tokenCadena,
+                sk_usuario_id = usu.sk_usuario_id,
+                FechaExpiracion = DateTime.Now.AddMinutes(30)
+            };
 
             _context.Token.Add(n_token);
             await _context.SaveChangesAsync();
 
             return Ok(new
             {
-                id = usu.Id,
-                nombre = usu.Nombre,
-                token
+                id = usu.sk_usuario_id,
+                nombre = usu.nombre_usuario,
+                token = tokenCadena
             });
+        }
+
+        [HttpPost("register")]
+        public async Task<ActionResult> PostUsuario([FromBody] RegisterDto dto)
+        {
+            var existeCorreo = await _context.Dim_Usuario
+                .AnyAsync(u => u.email_usuario == dto.Correo);
+
+            if (existeCorreo)
+            {
+                return BadRequest("El correo ya está registrado");
+            }
+
+            var nuevoUsuario = new Dim_Usuarios
+            {
+                nombre_usuario = dto.Nombre,
+                email_usuario = dto.Correo
+            };
+
+            var hasher = new PasswordHasher<Dim_Usuarios>();
+            nuevoUsuario.contrasenia = hasher.HashPassword(nuevoUsuario, dto.Contrasenia);
+
+            _context.Dim_Usuario.Add(nuevoUsuario);
+            await _context.SaveChangesAsync();
+
+            return Ok(new { mensaje = "Usuario registrado correctamente" });
         }
 
         [HttpPost("logout")]
@@ -70,39 +98,13 @@ namespace backend.Controllers
             var token = await _context.Token
                 .FirstOrDefaultAsync(t => t.Cadena == authorization);
 
-            _context.Token.Remove(token);
-            await _context.SaveChangesAsync();
-
-            return Ok();
-        }
-
-        [HttpPost("register")]
-        public async Task<ActionResult<Usuario>> PostUsuario(Usuario usuario)
-        {
-            var existeCorreo = await _context.Usuarios
-                .AnyAsync(u => u.Correo == usuario.Correo);
-
-            if (existeCorreo)
+            if (token != null)
             {
-                return BadRequest("El correo ya está registrado");
+                _context.Token.Remove(token);
+                await _context.SaveChangesAsync();
             }
 
-            var hasher = new PasswordHasher<Usuario>();
-
-            usuario.Contrasenia = hasher.HashPassword(
-                usuario,
-                usuario.Contrasenia
-            );
-
-            _context.Usuarios.Add(usuario);
-
-            await _context.SaveChangesAsync();
-
-
-            return Ok(new
-            {
-                mensaje = "Usuario registrado correctamente"
-            });
+            return Ok();
         }
     }
 }

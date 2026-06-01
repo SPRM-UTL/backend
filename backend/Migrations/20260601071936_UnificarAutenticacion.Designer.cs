@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using backend.Models;
 
@@ -11,9 +12,11 @@ using backend.Models;
 namespace backend.Migrations
 {
     [DbContext(typeof(PruebaaspContext))]
-    partial class PruebaaspContextModelSnapshot : ModelSnapshot
+    [Migration("20260601071936_UnificarAutenticacion")]
+    partial class UnificarAutenticacion
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -122,39 +125,33 @@ namespace backend.Migrations
                 {
                     b.Property<int>("sk_usuario_id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
-                        .HasColumnName("sk_usuario_id");
+                        .HasColumnType("int");
 
                     MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("sk_usuario_id"));
 
                     b.Property<string>("contrasenia")
                         .HasMaxLength(500)
-                        .HasColumnType("varchar(500)")
-                        .HasColumnName("contrasenia");
+                        .HasColumnType("varchar(500)");
 
                     b.Property<string>("email_usuario")
                         .HasMaxLength(150)
-                        .HasColumnType("varchar(150)")
-                        .HasColumnName("email_usuario");
+                        .HasColumnType("varchar(150)");
 
                     b.Property<string>("mac_address_usuario")
                         .HasMaxLength(17)
-                        .HasColumnType("varchar(17)")
-                        .HasColumnName("mac_address_usuario");
+                        .HasColumnType("varchar(17)");
 
                     b.Property<string>("nombre_arduino")
                         .HasMaxLength(100)
-                        .HasColumnType("varchar(100)")
-                        .HasColumnName("nombre_arduino");
+                        .HasColumnType("varchar(100)");
 
                     b.Property<string>("nombre_usuario")
                         .HasMaxLength(100)
-                        .HasColumnType("varchar(100)")
-                        .HasColumnName("nombre_usuario");
+                        .HasColumnType("varchar(100)");
 
                     b.HasKey("sk_usuario_id");
 
-                    b.ToTable("dim_usuario", (string)null);
+                    b.ToTable("Dim_Usuario");
                 });
 
             modelBuilder.Entity("backend.Models.Fact_Historico_Actividad", b =>
@@ -220,7 +217,7 @@ namespace backend.Migrations
 
                     b.HasIndex("sk_usuario_id");
 
-                    b.ToTable("token", (string)null);
+                    b.ToTable("Token");
                 });
 
             modelBuilder.Entity("backend.Models.Fact_Historico_Actividad", b =>

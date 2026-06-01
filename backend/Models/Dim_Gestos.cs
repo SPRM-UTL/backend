@@ -8,10 +8,12 @@ namespace backend.Models
     {
         [Key]
         public int sk_gesto_id { get; set; }
+
         public int bk_gesto_id { get; set; }
 
         [MaxLength(100)]
-        public string nombre_gesto { get; set; }
+        public string? nombre_gesto { get; set; }
+
         public int identificador_ia { get; set; }
 
         [Column(TypeName = "decimal(5,2)")]
