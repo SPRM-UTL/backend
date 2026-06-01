@@ -11,14 +11,13 @@ builder.Services.AddControllersWithViews();
 // 2. Configurar la política estricta de CORS para Angular
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("AngularPolicy",
-        policy =>
-        {
-            policy
-                .AllowAnyOrigin()
-                .AllowAnyHeader()
-                .AllowAnyMethod();
-        });
+    options.AddPolicy("AngularPolicy", policy =>
+    {
+        policy.WithOrigins("http://localhost:4200") // Origen de tu Frontend
+              .AllowAnyHeader()
+              .AllowAnyMethod()
+              .AllowCredentials(); // Crucial si manejas cookies/tokens
+    });
 });
 
 // 3. Configurar el contexto de Base de Datos para MySQL
