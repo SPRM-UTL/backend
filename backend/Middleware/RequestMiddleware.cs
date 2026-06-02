@@ -1,4 +1,4 @@
-﻿using backend.Models;
+using backend.Models;
 using Microsoft.EntityFrameworkCore;
 using System.Text;
 using System.Text.Json;
@@ -37,9 +37,9 @@ namespace backend.Middleware
                     {
                         context.Response.StatusCode = 401;
                         await context.Response.WriteAsync("No autorizado");
-                        return;
                     }
 
+                    context.Items["UsuarioId"] = token.sk_usuario_id;
                     token.FechaExpiracion = DateTime.Now.AddMinutes(30);
                     await db.SaveChangesAsync();
                 } 

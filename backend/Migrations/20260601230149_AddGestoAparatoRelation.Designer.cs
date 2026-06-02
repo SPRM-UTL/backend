@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using backend.Models;
 
@@ -11,9 +12,11 @@ using backend.Models;
 namespace backend.Migrations
 {
     [DbContext(typeof(PruebaaspContext))]
-    partial class PruebaaspContextModelSnapshot : ModelSnapshot
+    [Migration("20260601230149_AddGestoAparatoRelation")]
+    partial class AddGestoAparatoRelation
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -48,16 +51,11 @@ namespace backend.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("varchar(100)");
 
-                    b.Property<int?>("sk_usuario_id")
-                        .HasColumnType("int");
-
                     b.Property<string>("tipo_aparato")
                         .HasMaxLength(50)
                         .HasColumnType("varchar(50)");
 
                     b.HasKey("sk_aparato_id");
-
-                    b.HasIndex("sk_usuario_id");
 
                     b.ToTable("Dim_Aparato");
                 });
@@ -86,9 +84,6 @@ namespace backend.Migrations
                     b.Property<int?>("sk_aparato_id")
                         .HasColumnType("int");
 
-                    b.Property<int?>("sk_usuario_id")
-                        .HasColumnType("int");
-
                     b.Property<string>("tipo_disparador_nombre")
                         .HasMaxLength(100)
                         .HasColumnType("varchar(100)");
@@ -96,8 +91,6 @@ namespace backend.Migrations
                     b.HasKey("sk_gesto_id");
 
                     b.HasIndex("sk_aparato_id");
-
-                    b.HasIndex("sk_usuario_id");
 
                     b.ToTable("Dim_Gesto");
                 });
@@ -238,28 +231,13 @@ namespace backend.Migrations
                     b.ToTable("token", (string)null);
                 });
 
-            modelBuilder.Entity("backend.Models.Dim_Aparatos", b =>
-                {
-                    b.HasOne("backend.Models.Dim_Usuarios", "Usuario")
-                        .WithMany("Aparatos")
-                        .HasForeignKey("sk_usuario_id");
-
-                    b.Navigation("Usuario");
-                });
-
             modelBuilder.Entity("backend.Models.Dim_Gestos", b =>
                 {
                     b.HasOne("backend.Models.Dim_Aparatos", "Aparato")
                         .WithMany("Gestos")
                         .HasForeignKey("sk_aparato_id");
 
-                    b.HasOne("backend.Models.Dim_Usuarios", "Usuario")
-                        .WithMany("Gestos")
-                        .HasForeignKey("sk_usuario_id");
-
                     b.Navigation("Aparato");
-
-                    b.Navigation("Usuario");
                 });
 
             modelBuilder.Entity("backend.Models.Fact_Historico_Actividad", b =>
@@ -327,10 +305,6 @@ namespace backend.Migrations
 
             modelBuilder.Entity("backend.Models.Dim_Usuarios", b =>
                 {
-                    b.Navigation("Aparatos");
-
-                    b.Navigation("Gestos");
-
                     b.Navigation("Historico_Actividad");
 
                     b.Navigation("Tokens");

@@ -16,12 +16,15 @@ public class Dim_AparatosController : ControllerBase
     [HttpGet]
     public async Task<ActionResult<IEnumerable<Dim_Aparatos>>> GetDim_Aparatos()
     {
-        return await _context.Dim_Aparato.Include(h => h.Historico_Actividad).ToListAsync();
+        var usuarioId = (int?)HttpContext.Items["UsuarioId"];
+        return await _context.Dim_Aparato
+            .Where(a => a.sk_usuario_id == usuarioId)
+            .Include(h => h.Historico_Actividad).ToListAsync();
     }
 
     // GET: api/Dim_Aparatos/5
     [HttpGet("{sk_aparato_id}")]
-    public async Task<ActionResult<Dim_Aparatos>> GetDim_Aparatos(int sk_aparato_id)
+    public async Task<ActionResult<Dim_Aparatos>> GetDim_AparatoById(int sk_aparato_id)
     {
         var dim_aparatos = await _context.Dim_Aparato.FindAsync(sk_aparato_id);
 
@@ -42,6 +45,9 @@ public class Dim_AparatosController : ControllerBase
         {
             return BadRequest();
         }
+
+        var usuarioId = (int?)HttpContext.Items["UsuarioId"];
+        dim_aparatos.sk_usuario_id = usuarioId;
 
         _context.Entry(dim_aparatos).State = EntityState.Modified;
 
@@ -69,10 +75,13 @@ public class Dim_AparatosController : ControllerBase
     [HttpPost]
     public async Task<ActionResult<Dim_Aparatos>> PostDim_Aparatos(Dim_Aparatos dim_aparatos)
     {
+        var usuarioId = (int?)HttpContext.Items["UsuarioId"];
+        dim_aparatos.sk_usuario_id = usuarioId;
+
         _context.Dim_Aparato.Add(dim_aparatos);
         await _context.SaveChangesAsync();
 
-        return CreatedAtAction("GetDim_Aparatos", new { sk_aparato_id = dim_aparatos.sk_aparato_id }, dim_aparatos);
+        return CreatedAtAction(nameof(GetDim_AparatoById), new { sk_aparato_id = dim_aparatos.sk_aparato_id }, dim_aparatos);
     }
 
     // DELETE: api/Dim_Aparatos/5

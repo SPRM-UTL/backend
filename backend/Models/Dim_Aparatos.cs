@@ -1,4 +1,5 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 using System.Text.Json.Serialization;
 
 namespace backend.Models
@@ -25,5 +26,14 @@ namespace backend.Models
 
         [JsonIgnore]
         public List<Fact_Historico_Actividad>? Historico_Actividad { get; set; }
+
+        [JsonIgnore]
+        public List<Dim_Gestos>? Gestos { get; set; }
+
+        public int? sk_usuario_id { get; set; }
+
+        [ForeignKey("sk_usuario_id")]
+        [JsonIgnore]
+        public Dim_Usuarios? Usuario { get; set; }
     }
 }
