@@ -2,8 +2,10 @@ using backend.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using backend.Middleware;
+using DotNetEnv;
 
 var builder = WebApplication.CreateBuilder(args);
+Env.Load();
 
 // 1. Agregar servicios básicos al contenedor
 builder.Services.AddControllersWithViews();
@@ -23,7 +25,7 @@ builder.Services.AddCors(options =>
 // 3. Configurar el contexto de Base de Datos para MySQL
 builder.Services.AddDbContext<PruebaaspContext>(options =>
     options.UseMySql(
-        builder.Configuration.GetConnectionString("conexion"),
+        Environment.GetEnvironmentVariable("CONEXION"),
         Microsoft.EntityFrameworkCore.ServerVersion.Parse("8.4.7-mysql")
     ));
 
