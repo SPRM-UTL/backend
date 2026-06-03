@@ -12,9 +12,13 @@ WORKDIR /src
 COPY ["backend/backend.csproj", "backend/"]
 RUN dotnet restore "backend/backend.csproj"
 
-# Copiar todo lo demás y compilar
+# Copiar todo el resto del código fuente
 COPY . .
+
+# Nos movemos firmemente a la carpeta del proyecto para los siguientes pasos
 WORKDIR "/src/backend"
+
+# Compilar el proyecto
 RUN dotnet build "backend.csproj" -c Release -o /app/build
 
 # 3. Capa de publicación
