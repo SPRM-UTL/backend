@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using backend.Models;
 
@@ -11,9 +12,11 @@ using backend.Models;
 namespace backend.Migrations
 {
     [DbContext(typeof(PruebaaspContext))]
-    partial class PruebaaspContextModelSnapshot : ModelSnapshot
+    [Migration("20260603190537_AgregarMacBluetoothAparatos")]
+    partial class AgregarMacBluetoothAparatos
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -40,9 +43,6 @@ namespace backend.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("varchar(50)");
 
-                    b.Property<DateTime?>("fecha_sincronizacion")
-                        .HasColumnType("datetime(6)");
-
                     b.Property<string>("icono")
                         .HasMaxLength(50)
                         .HasColumnType("varchar(50)");
@@ -52,10 +52,6 @@ namespace backend.Migrations
                         .HasColumnType("varchar(17)");
 
                     b.Property<string>("nombre_aparato")
-                        .HasMaxLength(100)
-                        .HasColumnType("varchar(100)");
-
-                    b.Property<string>("nombre_bluetooth")
                         .HasMaxLength(100)
                         .HasColumnType("varchar(100)");
 

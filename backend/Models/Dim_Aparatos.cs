@@ -24,6 +24,14 @@ namespace backend.Models
         [MaxLength(50)]
         public string? icono { get; set; }
 
+        [MaxLength(17)]
+        public string? mac_bluetooth { get; set; }
+
+        [MaxLength(100)]
+        public string? nombre_bluetooth { get; set; }
+
+        public DateTime? fecha_sincronizacion { get; set; }
+
         [JsonIgnore]
         public List<Fact_Historico_Actividad>? Historico_Actividad { get; set; }
 
