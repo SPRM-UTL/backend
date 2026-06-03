@@ -7,6 +7,12 @@ using backend.Models;
 public class Dim_GestosController : ControllerBase
 {
     private readonly PruebaaspContext _context;
+    
+    // Lista de gestos permitidos
+    private static readonly string[] GestosValidos = new[] { 
+        "Manos Arriba", "Una Mano Arriba", "Agitar la Mano", "Abrir Puño", "Cerrar Puño" 
+    };
+
     public Dim_GestosController(PruebaaspContext context)
     {
         _context = context;
@@ -16,12 +22,15 @@ public class Dim_GestosController : ControllerBase
     [HttpGet]
     public async Task<ActionResult<IEnumerable<Dim_Gestos>>> GetDim_Gestos()
     {
-        return await _context.Dim_Gesto.Include(h => h.Historico_Actividad).ToListAsync();
+        var usuarioId = (int?)HttpContext.Items["UsuarioId"];
+        return await _context.Dim_Gesto
+            .Where(g => g.sk_usuario_id == usuarioId)
+            .Include(h => h.Historico_Actividad).Include(g => g.Aparato).ToListAsync();
     }
 
     // GET: api/Dim_Gestos/5
     [HttpGet("{sk_gesto_id}")]
-    public async Task<ActionResult<Dim_Gestos>> GetDim_Gestos(int sk_gesto_id)
+    public async Task<ActionResult<Dim_Gestos>> GetDim_GestoById(int sk_gesto_id)
     {
         var dim_gestos = await _context.Dim_Gesto.FindAsync(sk_gesto_id);
 
@@ -42,6 +51,14 @@ public class Dim_GestosController : ControllerBase
         {
             return BadRequest();
         }
+
+        if (!GestosValidos.Contains(dim_gestos.nombre_gesto))
+        {
+            return BadRequest("Gesto no reconocido. Debe seleccionar un gesto válido.");
+        }
+
+        var usuarioId = (int?)HttpContext.Items["UsuarioId"];
+        dim_gestos.sk_usuario_id = usuarioId;
 
         _context.Entry(dim_gestos).State = EntityState.Modified;
 
@@ -69,10 +86,18 @@ public class Dim_GestosController : ControllerBase
     [HttpPost]
     public async Task<ActionResult<Dim_Gestos>> PostDim_Gestos(Dim_Gestos dim_gestos)
     {
+        if (!GestosValidos.Contains(dim_gestos.nombre_gesto))
+        {
+            return BadRequest("Gesto no reconocido. Debe seleccionar un gesto válido.");
+        }
+
+        var usuarioId = (int?)HttpContext.Items["UsuarioId"];
+        dim_gestos.sk_usuario_id = usuarioId;
+
         _context.Dim_Gesto.Add(dim_gestos);
         await _context.SaveChangesAsync();
 
-        return CreatedAtAction("GetDim_Gestos", new { sk_gesto_id = dim_gestos.sk_gesto_id }, dim_gestos);
+        return CreatedAtAction(nameof(GetDim_GestoById), new { sk_gesto_id = dim_gestos.sk_gesto_id }, dim_gestos);
     }
 
     // DELETE: api/Dim_Gestos/5

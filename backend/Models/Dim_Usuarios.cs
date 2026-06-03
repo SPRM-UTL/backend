@@ -1,4 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 using System.Text.Json.Serialization;
 
 namespace backend.Models
@@ -29,5 +29,10 @@ namespace backend.Models
         [JsonIgnore]
         public List<Token>? Tokens { get; set; }
 
+        [JsonIgnore]
+        public List<Dim_Aparatos>? Aparatos { get; set; }
+
+        [JsonIgnore]
+        public List<Dim_Gestos>? Gestos { get; set; }
     }
 }

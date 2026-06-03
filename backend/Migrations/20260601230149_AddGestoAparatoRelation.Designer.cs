@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using backend.Models;
 
@@ -11,9 +12,11 @@ using backend.Models;
 namespace backend.Migrations
 {
     [DbContext(typeof(PruebaaspContext))]
-    partial class PruebaaspContextModelSnapshot : ModelSnapshot
+    [Migration("20260601230149_AddGestoAparatoRelation")]
+    partial class AddGestoAparatoRelation
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -40,35 +43,19 @@ namespace backend.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("varchar(50)");
 
-                    b.Property<DateTime?>("fecha_sincronizacion")
-                        .HasColumnType("datetime(6)");
-
                     b.Property<string>("icono")
                         .HasMaxLength(50)
                         .HasColumnType("varchar(50)");
 
-                    b.Property<string>("mac_bluetooth")
-                        .HasMaxLength(17)
-                        .HasColumnType("varchar(17)");
-
                     b.Property<string>("nombre_aparato")
                         .HasMaxLength(100)
                         .HasColumnType("varchar(100)");
-
-                    b.Property<string>("nombre_bluetooth")
-                        .HasMaxLength(100)
-                        .HasColumnType("varchar(100)");
-
-                    b.Property<int?>("sk_usuario_id")
-                        .HasColumnType("int");
 
                     b.Property<string>("tipo_aparato")
                         .HasMaxLength(50)
                         .HasColumnType("varchar(50)");
 
                     b.HasKey("sk_aparato_id");
-
-                    b.HasIndex("sk_usuario_id");
 
                     b.ToTable("Dim_Aparato");
                 });
@@ -97,9 +84,6 @@ namespace backend.Migrations
                     b.Property<int?>("sk_aparato_id")
                         .HasColumnType("int");
 
-                    b.Property<int?>("sk_usuario_id")
-                        .HasColumnType("int");
-
                     b.Property<string>("tipo_disparador_nombre")
                         .HasMaxLength(100)
                         .HasColumnType("varchar(100)");
@@ -107,8 +91,6 @@ namespace backend.Migrations
                     b.HasKey("sk_gesto_id");
 
                     b.HasIndex("sk_aparato_id");
-
-                    b.HasIndex("sk_usuario_id");
 
                     b.ToTable("Dim_Gesto");
                 });
@@ -183,78 +165,6 @@ namespace backend.Migrations
                     b.ToTable("dim_usuario", (string)null);
                 });
 
-            modelBuilder.Entity("backend.Models.Esp32Device", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<DateTime>("CreatedAtUtc")
-                        .HasColumnType("datetime(6)");
-
-                    b.Property<string>("Description")
-                        .HasColumnType("longtext");
-
-                    b.Property<string>("DeviceKey")
-                        .IsRequired()
-                        .HasColumnType("longtext");
-
-                    b.Property<bool>("IsActive")
-                        .HasColumnType("tinyint(1)");
-
-                    b.Property<DateTime?>("LastSeenAtUtc")
-                        .HasColumnType("datetime(6)");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasColumnType("longtext");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("Esp32Device");
-                });
-
-            modelBuilder.Entity("backend.Models.Esp32Message", b =>
-                {
-                    b.Property<long>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint");
-
-                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<long>("Id"));
-
-                    b.Property<DateTime>("CreatedAtUtc")
-                        .HasColumnType("datetime(6)");
-
-                    b.Property<string>("Message")
-                        .IsRequired()
-                        .HasColumnType("longtext");
-
-                    b.Property<string>("ProcessingError")
-                        .HasColumnType("longtext");
-
-                    b.Property<string>("Response")
-                        .HasColumnType("longtext");
-
-                    b.Property<int>("SourceDeviceId")
-                        .HasColumnType("int");
-
-                    b.Property<int?>("TargetDeviceId")
-                        .HasColumnType("int");
-
-                    b.Property<bool>("WasProcessed")
-                        .HasColumnType("tinyint(1)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("SourceDeviceId");
-
-                    b.HasIndex("TargetDeviceId");
-
-                    b.ToTable("Esp32Message");
-                });
-
             modelBuilder.Entity("backend.Models.Fact_Historico_Actividad", b =>
                 {
                     b.Property<int>("sk_actividad_id")
@@ -321,45 +231,13 @@ namespace backend.Migrations
                     b.ToTable("token", (string)null);
                 });
 
-            modelBuilder.Entity("backend.Models.Dim_Aparatos", b =>
-                {
-                    b.HasOne("backend.Models.Dim_Usuarios", "Usuario")
-                        .WithMany("Aparatos")
-                        .HasForeignKey("sk_usuario_id");
-
-                    b.Navigation("Usuario");
-                });
-
             modelBuilder.Entity("backend.Models.Dim_Gestos", b =>
                 {
                     b.HasOne("backend.Models.Dim_Aparatos", "Aparato")
                         .WithMany("Gestos")
                         .HasForeignKey("sk_aparato_id");
 
-                    b.HasOne("backend.Models.Dim_Usuarios", "Usuario")
-                        .WithMany("Gestos")
-                        .HasForeignKey("sk_usuario_id");
-
                     b.Navigation("Aparato");
-
-                    b.Navigation("Usuario");
-                });
-
-            modelBuilder.Entity("backend.Models.Esp32Message", b =>
-                {
-                    b.HasOne("backend.Models.Esp32Device", "SourceDevice")
-                        .WithMany("SentMessages")
-                        .HasForeignKey("SourceDeviceId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("backend.Models.Esp32Device", "TargetDevice")
-                        .WithMany("ReceivedMessages")
-                        .HasForeignKey("TargetDeviceId");
-
-                    b.Navigation("SourceDevice");
-
-                    b.Navigation("TargetDevice");
                 });
 
             modelBuilder.Entity("backend.Models.Fact_Historico_Actividad", b =>
@@ -427,20 +305,9 @@ namespace backend.Migrations
 
             modelBuilder.Entity("backend.Models.Dim_Usuarios", b =>
                 {
-                    b.Navigation("Aparatos");
-
-                    b.Navigation("Gestos");
-
                     b.Navigation("Historico_Actividad");
 
                     b.Navigation("Tokens");
-                });
-
-            modelBuilder.Entity("backend.Models.Esp32Device", b =>
-                {
-                    b.Navigation("ReceivedMessages");
-
-                    b.Navigation("SentMessages");
                 });
 #pragma warning restore 612, 618
         }
