@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using backend.Models;
 
@@ -11,9 +12,11 @@ using backend.Models;
 namespace backend.Migrations
 {
     [DbContext(typeof(PruebaaspContext))]
-    partial class PruebaaspContextModelSnapshot : ModelSnapshot
+    [Migration("20260602195317_AgregarESP32")]
+    partial class AgregarESP32
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -40,35 +43,19 @@ namespace backend.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("varchar(50)");
 
-                    b.Property<DateTime?>("fecha_sincronizacion")
-                        .HasColumnType("datetime(6)");
-
                     b.Property<string>("icono")
                         .HasMaxLength(50)
                         .HasColumnType("varchar(50)");
 
-                    b.Property<string>("mac_bluetooth")
-                        .HasMaxLength(17)
-                        .HasColumnType("varchar(17)");
-
                     b.Property<string>("nombre_aparato")
                         .HasMaxLength(100)
                         .HasColumnType("varchar(100)");
-
-                    b.Property<string>("nombre_bluetooth")
-                        .HasMaxLength(100)
-                        .HasColumnType("varchar(100)");
-
-                    b.Property<int?>("sk_usuario_id")
-                        .HasColumnType("int");
 
                     b.Property<string>("tipo_aparato")
                         .HasMaxLength(50)
                         .HasColumnType("varchar(50)");
 
                     b.HasKey("sk_aparato_id");
-
-                    b.HasIndex("sk_usuario_id");
 
                     b.ToTable("Dim_Aparato");
                 });
@@ -94,21 +81,11 @@ namespace backend.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("varchar(100)");
 
-                    b.Property<int?>("sk_aparato_id")
-                        .HasColumnType("int");
-
-                    b.Property<int?>("sk_usuario_id")
-                        .HasColumnType("int");
-
                     b.Property<string>("tipo_disparador_nombre")
                         .HasMaxLength(100)
                         .HasColumnType("varchar(100)");
 
                     b.HasKey("sk_gesto_id");
-
-                    b.HasIndex("sk_aparato_id");
-
-                    b.HasIndex("sk_usuario_id");
 
                     b.ToTable("Dim_Gesto");
                 });
@@ -321,30 +298,6 @@ namespace backend.Migrations
                     b.ToTable("token", (string)null);
                 });
 
-            modelBuilder.Entity("backend.Models.Dim_Aparatos", b =>
-                {
-                    b.HasOne("backend.Models.Dim_Usuarios", "Usuario")
-                        .WithMany("Aparatos")
-                        .HasForeignKey("sk_usuario_id");
-
-                    b.Navigation("Usuario");
-                });
-
-            modelBuilder.Entity("backend.Models.Dim_Gestos", b =>
-                {
-                    b.HasOne("backend.Models.Dim_Aparatos", "Aparato")
-                        .WithMany("Gestos")
-                        .HasForeignKey("sk_aparato_id");
-
-                    b.HasOne("backend.Models.Dim_Usuarios", "Usuario")
-                        .WithMany("Gestos")
-                        .HasForeignKey("sk_usuario_id");
-
-                    b.Navigation("Aparato");
-
-                    b.Navigation("Usuario");
-                });
-
             modelBuilder.Entity("backend.Models.Esp32Message", b =>
                 {
                     b.HasOne("backend.Models.Esp32Device", "SourceDevice")
@@ -410,8 +363,6 @@ namespace backend.Migrations
 
             modelBuilder.Entity("backend.Models.Dim_Aparatos", b =>
                 {
-                    b.Navigation("Gestos");
-
                     b.Navigation("Historico_Actividad");
                 });
 
@@ -427,10 +378,6 @@ namespace backend.Migrations
 
             modelBuilder.Entity("backend.Models.Dim_Usuarios", b =>
                 {
-                    b.Navigation("Aparatos");
-
-                    b.Navigation("Gestos");
-
                     b.Navigation("Historico_Actividad");
 
                     b.Navigation("Tokens");
