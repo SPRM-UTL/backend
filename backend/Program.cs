@@ -3,6 +3,11 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using backend.Middleware;
 using DotNetEnv;
+using System.Collections.Concurrent;
+using System.Net.WebSockets;
+using System.Text;
+using System.Text.Json;
+using System.Threading.Channels;
 
 var builder = WebApplication.CreateBuilder(args);
 Env.Load();
@@ -48,8 +53,14 @@ app.UseRouting();
 // 🔥 CRÍTICO: CORS debe ejecutarse inmediatamente después de Routing y ANTES de cualquier Middleware de Autorización o petición.
 app.UseCors("AngularPolicy");
 
+app.UseWebSockets(new WebSocketOptions
+{
+    KeepAliveInterval = TimeSpan.FromMinutes(2)
+});
+
 // Middlewares personalizados y seguridad
 app.UseMiddleware<RequestMiddleware>();
+app.UseMiddleware<WebSocketMiddleware>();
 app.UseAuthorization();
 
 app.MapStaticAssets();

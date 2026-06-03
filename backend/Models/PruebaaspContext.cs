@@ -21,6 +21,8 @@ public partial class PruebaaspContext : DbContext
     public virtual DbSet<Dim_Aparatos> Dim_Aparato { get; set; }
     public virtual DbSet<Dim_Tiempo> Dim_Tiempo { get; set; }
     public virtual DbSet<Fact_Historico_Actividad> Historico_Actividad { get; set; }
+    public virtual DbSet<Esp32Device> Esp32Device { get; set; }
+    public virtual DbSet<Esp32Message> Esp32Message { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
