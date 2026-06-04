@@ -1,44 +1,40 @@
 using backend.Models;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Options;
 using backend.Middleware;
 using DotNetEnv;
-using System.Collections.Concurrent;
-using System.Net.WebSockets;
-using System.Text;
-using System.Text.Json;
-using System.Threading.Channels;
+using backend.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 Env.Load();
 
-// 1. Agregar servicios básicos al contenedor
 builder.Services.AddControllersWithViews();
+builder.Services.AddSingleton<Esp32ConnectionManager>();
+builder.Services.AddSingleton<Esp32MessageEventHub>();
+builder.Services.AddScoped<Esp32MessageRouter>();
 
-// 2. Configurar la política estricta de CORS para Angular
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AngularPolicy", policy =>
     {
-        policy.WithOrigins("http://localhost:4200") // Origen de tu Frontend
+        policy.WithOrigins("http://localhost:4200")
               .AllowAnyHeader()
               .AllowAnyMethod()
-              .AllowCredentials(); // Crucial si manejas cookies/tokens
+              .AllowCredentials();
     });
 });
 
-// 3. Configurar el contexto de Base de Datos para MySQL
+var connectionString =
+    Environment.GetEnvironmentVariable("CONEXION") ??
+    builder.Configuration.GetConnectionString("conexion");
+
 builder.Services.AddDbContext<PruebaaspContext>(options =>
     options.UseMySql(
-        Environment.GetEnvironmentVariable("CONEXION"),
-        Microsoft.EntityFrameworkCore.ServerVersion.Parse("8.4.7-mysql")
+        connectionString,
+        Microsoft.EntityFrameworkCore.ServerVersion.Parse("8.4.7-mysql"),
+        mySqlOptions => mySqlOptions.EnableRetryOnFailure()
     ));
 
 var app = builder.Build();
-
-// ==========================================
-// CONFIGURACIÓN DEL PIPELINE DE PETICIONES (MIDDLEWARES)
-// ==========================================
 
 if (!app.Environment.IsDevelopment())
 {
@@ -46,11 +42,9 @@ if (!app.Environment.IsDevelopment())
     app.UseHsts();
 }
 
-// Redirección de HTTP a HTTPS y enrutamiento básico
 app.UseHttpsRedirection();
 app.UseRouting();
 
-// 🔥 CRÍTICO: CORS debe ejecutarse inmediatamente después de Routing y ANTES de cualquier Middleware de Autorización o petición.
 app.UseCors("AngularPolicy");
 
 app.UseWebSockets(new WebSocketOptions
@@ -58,18 +52,15 @@ app.UseWebSockets(new WebSocketOptions
     KeepAliveInterval = TimeSpan.FromMinutes(2)
 });
 
-// Middlewares personalizados y seguridad
 app.UseMiddleware<RequestMiddleware>();
-app.UseMiddleware<WebSocketMiddleware>();
 app.UseAuthorization();
 
 app.MapStaticAssets();
+app.MapControllers();
 
-// Configuración de rutas de controladores
 app.MapControllerRoute(
     name: "default",
     pattern: "{controller=Home}/{action=Index}/{id?}")
     .WithStaticAssets();
 
-// Encender la aplicación
 app.Run();

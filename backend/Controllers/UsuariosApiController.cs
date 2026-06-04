@@ -11,7 +11,8 @@ using System.Threading.Tasks;
 
 namespace backend.Controllers
 {
-    [Route("api/[controller]")]
+    [Route("api/UsuariosApi")]
+    [Route("api/usuarios")]
     [ApiController]
     public class UsuariosApiController : ControllerBase
     {
@@ -24,15 +25,15 @@ namespace backend.Controllers
 
         // GET: api/UsuariosApi
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<object>>> GetUsuarios()
+        public async Task<ActionResult<IEnumerable<UsuarioProfileDto>>> GetUsuarios()
         {
-            // Proyectamos a un objeto anónimo manteniendo la estructura JSON que Angular ya consume
-            return await _context.Dim_Usuario
+            return await _context.Usuarios
                 .Select(u => new
+                UsuarioProfileDto
                 {
-                    id = u.sk_usuario_id,
-                    nombre = u.nombre_usuario,
-                    correo = u.email_usuario
+                    Id = u.sk_usuario_id,
+                    Nombre = u.nombre_usuario,
+                    Correo = u.email_usuario
                 })
                 .ToListAsync();
         }
@@ -41,13 +42,13 @@ namespace backend.Controllers
         [HttpGet("{id}")]
         public async Task<ActionResult> GetUsuario(int id)
         {
-            var usuario = await _context.Dim_Usuario
+            var usuario = await _context.Usuarios
                 .Where(u => u.sk_usuario_id == id)
-                .Select(u => new
+                .Select(u => new UsuarioProfileDto
                 {
-                    id = u.sk_usuario_id,
-                    nombre = u.nombre_usuario,
-                    correo = u.email_usuario
+                    Id = u.sk_usuario_id,
+                    Nombre = u.nombre_usuario,
+                    Correo = u.email_usuario
                 })
                 .FirstOrDefaultAsync();
 
@@ -64,7 +65,7 @@ namespace backend.Controllers
         public async Task<IActionResult> PutUsuario(int id, [FromBody] RegisterDto dto)
         {
             // Nota: Reutilizamos RegisterDto ya que contiene Nombre, Correo y Contrasenia
-            var usuarioExistente = await _context.Dim_Usuario.FindAsync(id);
+            var usuarioExistente = await _context.Usuarios.FindAsync(id);
             if (usuarioExistente == null)
             {
                 return NotFound("Usuario no encontrado.");
@@ -75,7 +76,7 @@ namespace backend.Controllers
 
             if (!string.IsNullOrWhiteSpace(dto.Contrasenia))
             {
-                var hasher = new PasswordHasher<Dim_Usuarios>();
+                var hasher = new PasswordHasher<Usuario>();
                 usuarioExistente.contrasenia = hasher.HashPassword(usuarioExistente, dto.Contrasenia);
             }
 
@@ -105,7 +106,7 @@ namespace backend.Controllers
         [HttpPost]
         public async Task<ActionResult> PostUsuario([FromBody] RegisterDto dto)
         {
-            var existeCorreo = await _context.Dim_Usuario
+            var existeCorreo = await _context.Usuarios
                 .AnyAsync(u => u.email_usuario == dto.Correo);
 
             if (existeCorreo)
@@ -113,22 +114,27 @@ namespace backend.Controllers
                 return BadRequest("El correo ya está registrado");
             }
 
-            var nuevoUsuario = new Dim_Usuarios
+            var nuevoUsuario = new Usuario
             {
                 nombre_usuario = dto.Nombre,
                 email_usuario = dto.Correo
             };
 
-            var hasher = new PasswordHasher<Dim_Usuarios>();
+            var hasher = new PasswordHasher<Usuario>();
             nuevoUsuario.contrasenia = hasher.HashPassword(nuevoUsuario, dto.Contrasenia);
 
-            _context.Dim_Usuario.Add(nuevoUsuario);
+            _context.Usuarios.Add(nuevoUsuario);
             await _context.SaveChangesAsync();
 
             return CreatedAtAction(
                 "GetUsuario",
                 new { id = nuevoUsuario.sk_usuario_id },
-                new { id = nuevoUsuario.sk_usuario_id, nombre = nuevoUsuario.nombre_usuario, correo = nuevoUsuario.email_usuario }
+                new UsuarioProfileDto
+                {
+                    Id = nuevoUsuario.sk_usuario_id,
+                    Nombre = nuevoUsuario.nombre_usuario,
+                    Correo = nuevoUsuario.email_usuario
+                }
             );
         }
 
@@ -136,13 +142,13 @@ namespace backend.Controllers
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteUsuario(int id)
         {
-            var usuario = await _context.Dim_Usuario.FindAsync(id);
+            var usuario = await _context.Usuarios.FindAsync(id);
             if (usuario == null)
             {
                 return NotFound();
             }
 
-            _context.Dim_Usuario.Remove(usuario);
+            _context.Usuarios.Remove(usuario);
             await _context.SaveChangesAsync();
 
             return NoContent();
@@ -150,7 +156,7 @@ namespace backend.Controllers
 
         private bool UsuarioExists(int id)
         {
-            return _context.Dim_Usuario.Any(e => e.sk_usuario_id == id);
+            return _context.Usuarios.Any(e => e.sk_usuario_id == id);
         }
     }
 }

@@ -4,7 +4,7 @@ using System.Text.Json.Serialization;
 
 namespace backend.Models
 {
-    public class Dim_Aparatos
+    public class Aparato
     {
         [Key]
         public int sk_aparato_id { get; set; }
@@ -33,15 +33,15 @@ namespace backend.Models
         public DateTime? fecha_sincronizacion { get; set; }
 
         [JsonIgnore]
-        public List<Fact_Historico_Actividad>? Historico_Actividad { get; set; }
+        public List<HistorialActividad>? Historico_Actividad { get; set; }
 
         [JsonIgnore]
-        public List<Dim_Gestos>? Gestos { get; set; }
+        public List<Gesto>? Gestos { get; set; }
 
         public int? sk_usuario_id { get; set; }
 
         [ForeignKey("sk_usuario_id")]
         [JsonIgnore]
-        public Dim_Usuarios? Usuario { get; set; }
+        public Usuario? Usuario { get; set; }
     }
 }

@@ -3,7 +3,7 @@ using System.Text.Json.Serialization;
 
 namespace backend.Models
 {
-    public class Dim_Tiempo
+    public class Tiempo
     {
         [Key]
         public int sk_tiempo_id { get; set; }
@@ -21,6 +21,6 @@ namespace backend.Models
         public int hora_periodo { get; set; }
 
         [JsonIgnore]
-        public List<Fact_Historico_Actividad>? Historico_Actividad { get; set; }
+        public List<HistorialActividad>? Historico_Actividad { get; set; }
     }
 }

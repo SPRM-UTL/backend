@@ -1,18 +1,38 @@
-﻿using NuGet.Common;
-using System;
-using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
+using System.Text.Json.Serialization;
 
-namespace backend.Models;
-
-public partial class Usuario
+namespace backend.Models
 {
-    public int Id { get; set; }
+    public class Usuario
+    {
+        [Key]
+        public int sk_usuario_id {  get; set; }
 
-    public string? Nombre { get; set; }
+        [MaxLength(100)]
+        public string? nombre_usuario { get; set; }
 
-    public string? Correo { get; set; }
+        [MaxLength(150)]
+        public string? email_usuario { get; set; }
+        
+        [MaxLength(500)]
+        public string? contrasenia { get; set; }
 
-    public string? Contrasenia { get; set; }
+        [MaxLength(100)]
+        public string? nombre_arduino{ get; set; }
 
-    public List<Token>? Tokens { get; set; }
+        [MaxLength(17)]
+        public string? mac_address_usuario { get; set; }
+
+        [JsonIgnore]
+        public List<HistorialActividad>? Historico_Actividad { get; set; }
+        
+        [JsonIgnore]
+        public List<Token>? Tokens { get; set; }
+
+        [JsonIgnore]
+        public List<Aparato>? Aparatos { get; set; }
+
+        [JsonIgnore]
+        public List<Gesto>? Gestos { get; set; }
+    }
 }

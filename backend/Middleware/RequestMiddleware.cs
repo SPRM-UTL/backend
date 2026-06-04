@@ -19,24 +19,23 @@ namespace backend.Middleware
             if (context.Request.Path.StartsWithSegments("/api"))
             {
                 if (!context.Request.Path.Equals("/api/Auth/login") &&
-                    !context.Request.Path.Equals("/api/Auth/register")) // 👈 Dejamos solo estos dos limpios
+                    !context.Request.Path.Equals("/api/Auth/register"))
                 {
                     var authorization = context.Request.Headers["Authorization"].ToString();
 
-                    // 🌟 LA MAGIA: Si el header viene con "Bearer ", le quitamos esa palabra
                     if (authorization.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
                     {
-                        authorization = authorization.Substring(7).Trim(); // Nos quedamos solo con el token puro
+                        authorization = authorization.Substring(7).Trim();
                     }
 
-                    // Ahora buscará en la BD usando el token puro ('mi_token_secreto_123')
                     var token = await db.Token
-                        .FirstOrDefaultAsync(t => t.Cadena == authorization);
+                        .FirstOrDefaultAsync(t => t.Cadena == authorization && t.Activo);
 
                     if (token == null || token.FechaExpiracion < DateTime.Now)
                     {
                         context.Response.StatusCode = 401;
                         await context.Response.WriteAsync("No autorizado");
+                        return;
                     }
 
                     context.Items["UsuarioId"] = token.sk_usuario_id;

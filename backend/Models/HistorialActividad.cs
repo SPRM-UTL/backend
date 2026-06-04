@@ -3,7 +3,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace backend.Models
 {
-    public class Fact_Historico_Actividad
+    public class HistorialActividad
     {
         [Key]
         public int sk_actividad_id { get; set; }
@@ -24,15 +24,15 @@ namespace backend.Models
         public bool ejecucion_exitosa { get; set; }
 
         [ForeignKey(nameof(sk_usuario_id))]
-        public Dim_Usuarios? Dim_Usuario { get; set; }
+        public Usuario? Usuario { get; set; }
 
         [ForeignKey(nameof(sk_gesto_id))]
-        public Dim_Gestos? Dim_Gesto { get; set; }
+        public Gesto? Gesto { get; set; }
 
         [ForeignKey(nameof(sk_aparato_id))]
-        public Dim_Aparatos? Dim_Aparato { get; set; }
+        public Aparato? Aparato { get; set; }
 
         [ForeignKey(nameof(sk_tiempo_id))]
-        public Dim_Tiempo? Dim_Tiempo { get; set; }
+        public Tiempo? Tiempo { get; set; }
     }
 }

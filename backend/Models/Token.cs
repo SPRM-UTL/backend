@@ -10,9 +10,13 @@ namespace backend.Models
 
         public DateTime FechaExpiracion { get; set; }
 
+        public bool Activo { get; set; } = true;
+
+        public DateTime? FechaBaja { get; set; }
+
         public int sk_usuario_id { get; set; }
 
         [ForeignKey(nameof(sk_usuario_id))]
-        public Dim_Usuarios? Usuario { get; set; }
+        public Usuario? Usuario { get; set; }
     }
 }
