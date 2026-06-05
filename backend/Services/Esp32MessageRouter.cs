@@ -9,22 +9,19 @@ namespace backend.Services
     {
         private readonly IServiceScopeFactory _scopeFactory;
         private readonly Esp32ConnectionManager _connections;
-        private readonly Esp32MessageEventHub _events;
         private readonly ILogger<Esp32MessageRouter> _logger;
 
         public Esp32MessageRouter(
             IServiceScopeFactory scopeFactory,
             Esp32ConnectionManager connections,
-            Esp32MessageEventHub events,
             ILogger<Esp32MessageRouter> logger)
         {
             _scopeFactory = scopeFactory;
             _connections = connections;
-            _events = events;
             _logger = logger;
         }
 
-        public async Task<Esp32Device> RegisterOrUpdateDeviceAsync(
+        public async Task<AparatoConfiguracionRed?> RegisterOrUpdateDeviceAsync(
             string deviceKey,
             CancellationToken cancellationToken)
         {
@@ -32,28 +29,23 @@ namespace backend.Services
             var db = scope.ServiceProvider.GetRequiredService<PruebaaspContext>();
             var normalizedDeviceKey = deviceKey.Trim();
 
-            var device = await db.Esp32Device
-                .FirstOrDefaultAsync(item => item.DeviceKey == normalizedDeviceKey, cancellationToken);
+            var configuracion = await db.AparatoConfiguracionesRed
+                .FirstOrDefaultAsync(item => item.device_key == normalizedDeviceKey && item.activo, cancellationToken);
 
-            if (device is null)
+            if (configuracion is null)
             {
-                device = new Esp32Device
-                {
-                    DeviceKey = normalizedDeviceKey,
-                    Name = normalizedDeviceKey
-                };
-                db.Esp32Device.Add(device);
+                return null;
             }
 
-            device.LastSeenAtUtc = DateTime.UtcNow;
+            configuracion.fecha_ultima_conexion = DateTime.UtcNow;
             await db.SaveChangesAsync(cancellationToken);
 
-            return device;
+            return configuracion;
         }
 
         public async Task ReceiveMessagesAsync(
             WebSocket socket,
-            int sourceDeviceId,
+            int sourceConfiguracionRedId,
             string? targetDeviceKey,
             CancellationToken cancellationToken)
         {
@@ -73,7 +65,7 @@ namespace backend.Services
                 }
 
                 await ProcessMessageAsync(
-                    sourceDeviceId,
+                    sourceConfiguracionRedId,
                     targetDeviceKey,
                     readResult.Message,
                     cancellationToken);
@@ -81,7 +73,7 @@ namespace backend.Services
         }
 
         private async Task ProcessMessageAsync(
-            int sourceDeviceId,
+            int sourceConfiguracionRedId,
             string? targetDeviceKey,
             string message,
             CancellationToken cancellationToken)
@@ -89,68 +81,50 @@ namespace backend.Services
             await using var scope = _scopeFactory.CreateAsyncScope();
             var db = scope.ServiceProvider.GetRequiredService<PruebaaspContext>();
 
-            Esp32Device? targetDevice = null;
             WebSocket? targetSocket = null;
+            AparatoConfiguracionRed? targetConfiguracion = null;
 
             if (!string.IsNullOrWhiteSpace(targetDeviceKey))
             {
                 var normalizedTargetDeviceKey = targetDeviceKey.Trim();
 
-                targetDevice = await db.Esp32Device
-                    .FirstOrDefaultAsync(device => device.DeviceKey == normalizedTargetDeviceKey, cancellationToken);
+                targetConfiguracion = await db.AparatoConfiguracionesRed
+                    .FirstOrDefaultAsync(configuracion => configuracion.device_key == normalizedTargetDeviceKey &&
+                        configuracion.activo, cancellationToken);
 
                 _connections.TryGetOpenSocket(normalizedTargetDeviceKey, out targetSocket);
             }
-
-            var log = new Esp32Message
-            {
-                SourceDeviceId = sourceDeviceId,
-                TargetDeviceId = targetDevice?.Id,
-                Message = message
-            };
 
             try
             {
                 if (targetSocket is null)
                 {
-                    log.Response = string.IsNullOrWhiteSpace(targetDeviceKey)
-                        ? "Mensaje recibido, sin ESP32 destino configurado."
-                        : $"Mensaje recibido, pero {targetDeviceKey.Trim()} no esta conectado.";
-                    log.WasProcessed = false;
+                    var reason = string.IsNullOrWhiteSpace(targetDeviceKey)
+                        ? "sin aparato destino configurado"
+                        : $"{targetDeviceKey.Trim()} no esta conectado";
+
+                    _logger.LogInformation(
+                        "Comando de aparato {SourceConfiguracionRedId} recibido, {Reason}.",
+                        sourceConfiguracionRedId,
+                        reason);
                 }
                 else
                 {
                     var payload = Encoding.UTF8.GetBytes(message);
                     await targetSocket.SendAsync(payload, WebSocketMessageType.Text, true, cancellationToken);
-                    log.Response = $"Mensaje reenviado a {targetDeviceKey!.Trim()}.";
-                    log.WasProcessed = true;
+
+                    if (targetConfiguracion is not null)
+                    {
+                        targetConfiguracion.fecha_ultima_conexion = DateTime.UtcNow;
+                    }
+
+                    await db.SaveChangesAsync(cancellationToken);
                 }
             }
             catch (Exception ex)
             {
-                log.Response = "No se pudo procesar el mensaje.";
-                log.ProcessingError = ex.Message;
-                log.WasProcessed = false;
                 _logger.LogError(ex, "Error procesando mensaje ESP32.");
             }
-
-            db.Esp32Message.Add(log);
-            await db.SaveChangesAsync(cancellationToken);
-
-            var sourceDeviceKey = await db.Esp32Device
-                .Where(device => device.Id == sourceDeviceId)
-                .Select(device => device.DeviceKey)
-                .FirstAsync(cancellationToken);
-
-            _events.Publish(new MessageEvent(
-                log.Id,
-                sourceDeviceKey,
-                targetDevice?.DeviceKey,
-                log.Message,
-                log.Response,
-                log.WasProcessed,
-                log.ProcessingError,
-                log.CreatedAtUtc));
         }
 
         private static async Task<WebSocketReadResult> ReadTextMessageAsync(

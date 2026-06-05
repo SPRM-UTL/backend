@@ -9,7 +9,6 @@ Env.Load();
 
 builder.Services.AddControllersWithViews();
 builder.Services.AddSingleton<Esp32ConnectionManager>();
-builder.Services.AddSingleton<Esp32MessageEventHub>();
 builder.Services.AddScoped<Esp32MessageRouter>();
 
 builder.Services.AddCors(options =>

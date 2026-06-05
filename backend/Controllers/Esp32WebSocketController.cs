@@ -39,8 +39,19 @@ namespace backend.Controllers
             var normalizedDeviceKey = deviceKey.Trim();
             using var socket = await HttpContext.WebSockets.AcceptWebSocketAsync();
 
-            await _connections.AddOrReplaceAsync(normalizedDeviceKey, socket, cancellationToken);
             var sourceDevice = await _router.RegisterOrUpdateDeviceAsync(normalizedDeviceKey, cancellationToken);
+
+            if (sourceDevice == null)
+            {
+                await socket.CloseAsync(
+                    System.Net.WebSockets.WebSocketCloseStatus.PolicyViolation,
+                    "deviceKey no registrado en configuracion de red",
+                    cancellationToken);
+
+                return BadRequest("El deviceKey no esta registrado en la configuracion de red de un aparato activo.");
+            }
+
+            await _connections.AddOrReplaceAsync(normalizedDeviceKey, socket, cancellationToken);
 
             _logger.LogInformation("ESP32 conectado: {DeviceKey}", normalizedDeviceKey);
 
@@ -48,7 +59,7 @@ namespace backend.Controllers
             {
                 await _router.ReceiveMessagesAsync(
                     socket,
-                    sourceDevice.Id,
+                    sourceDevice.sk_aparato_configuracion_red_id,
                     targetDeviceKey,
                     cancellationToken);
 
