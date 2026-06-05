@@ -34,6 +34,18 @@ builder.Services.AddDbContext<PruebaaspContext>(options =>
     ));
 
 var app = builder.Build();
+try
+{
+    using (var scope = app.Services.CreateScope())
+    {
+        var db = scope.ServiceProvider.GetRequiredService<PruebaaspContext>();
+        db.Database.Migrate();
+    }
+}
+catch (Exception ex)
+{
+    app.Logger.LogError(ex, "Error al aplicar migraciones de la base de datos.");
+}
 
 if (!app.Environment.IsDevelopment())
 {
