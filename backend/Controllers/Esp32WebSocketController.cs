@@ -5,7 +5,7 @@ using System.Text;
 
 namespace backend.Controllers
 {
-    [Route("ws")]
+    [Route("ws")] 
     public class Esp32WebSocketController : ControllerBase
     {
         private readonly Esp32ConnectionManager _connections;
