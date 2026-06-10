@@ -1,9 +1,11 @@
 using backend.Services;
 using Microsoft.AspNetCore.Mvc;
+using System.Net.WebSockets;
+using System.Text;
 
 namespace backend.Controllers
 {
-    [Route("ws")]
+    [Route("ws")] 
     public class Esp32WebSocketController : ControllerBase
     {
         private readonly Esp32ConnectionManager _connections;
@@ -37,6 +39,7 @@ namespace backend.Controllers
             }
 
             var normalizedDeviceKey = deviceKey.Trim();
+            Console.WriteLine("DeviceKey: " + normalizedDeviceKey);
             using var socket = await HttpContext.WebSockets.AcceptWebSocketAsync();
 
             var sourceDevice = await _router.RegisterOrUpdateDeviceAsync(normalizedDeviceKey, cancellationToken);
@@ -47,6 +50,8 @@ namespace backend.Controllers
                     System.Net.WebSockets.WebSocketCloseStatus.PolicyViolation,
                     "deviceKey no registrado en configuracion de red",
                     cancellationToken);
+
+                Console.WriteLine("No se encontro el device");
 
                 return BadRequest("El deviceKey no esta registrado en la configuracion de red de un aparato activo.");
             }
@@ -70,6 +75,30 @@ namespace backend.Controllers
                 _connections.Remove(normalizedDeviceKey, socket);
                 _logger.LogInformation("ESP32 desconectado: {DeviceKey}", normalizedDeviceKey);
             }
+        }
+
+        [HttpGet("accion")]
+        public async Task<IActionResult> EnviarComando(
+        [FromQuery] string comando,
+        [FromQuery] string deviceKey,
+        CancellationToken cancellationToken)
+        {
+            if (!_connections.TryGetOpenSocket(deviceKey, out var socket))
+            {
+                return NotFound($"No existe una conexión activa para '{deviceKey}'.");
+            }
+
+            await socket!.SendAsync(
+                Encoding.UTF8.GetBytes(comando),
+                WebSocketMessageType.Text,
+                true,
+                cancellationToken);
+
+            return Ok(new
+            {
+                deviceKey,
+                comando
+            });
         }
     }
 }
