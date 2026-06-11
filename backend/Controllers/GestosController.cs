@@ -33,6 +33,7 @@ public class GestosController : ControllerBase
                 SkGestoId = g.sk_gesto_id,
                 BkGestoId = g.bk_gesto_id,
                 NombreGesto = g.nombre_gesto,
+                Icono = g.icono,
                 IdentificadorIa = g.identificador_ia,
                 NivelConfianzaMinimo = g.nivel_confianza_minimo,
                 TipoDisparadorNombre = g.tipo_disparador_nombre,
@@ -53,6 +54,7 @@ public class GestosController : ControllerBase
                 SkGestoId = g.sk_gesto_id,
                 BkGestoId = g.bk_gesto_id,
                 NombreGesto = g.nombre_gesto,
+                Icono = g.icono,
                 IdentificadorIa = g.identificador_ia,
                 NivelConfianzaMinimo = g.nivel_confianza_minimo,
                 TipoDisparadorNombre = g.tipo_disparador_nombre,
@@ -161,6 +163,7 @@ public class GestosController : ControllerBase
         SkGestoId = gesto.sk_gesto_id,
         BkGestoId = gesto.bk_gesto_id,
         NombreGesto = gesto.nombre_gesto,
+        Icono = gesto.icono,
         IdentificadorIa = gesto.identificador_ia,
         NivelConfianzaMinimo = gesto.nivel_confianza_minimo,
         TipoDisparadorNombre = gesto.tipo_disparador_nombre,
@@ -171,6 +174,7 @@ public class GestosController : ControllerBase
     {
         gesto.bk_gesto_id = dto.BkGestoId;
         gesto.nombre_gesto = dto.NombreGesto;
+        gesto.icono= dto.Icono;
         gesto.identificador_ia = dto.IdentificadorIa;
         gesto.nivel_confianza_minimo = dto.NivelConfianzaMinimo;
         gesto.tipo_disparador_nombre = dto.TipoDisparadorNombre;

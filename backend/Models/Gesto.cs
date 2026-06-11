@@ -13,6 +13,9 @@ namespace backend.Models
 
         [MaxLength(100)]
         public string? nombre_gesto { get; set; }
+        
+        [MaxLength(50)]
+        public string? icono { get; set; }
 
         public int identificador_ia { get; set; }
 
