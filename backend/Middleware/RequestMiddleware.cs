@@ -16,6 +16,7 @@ namespace backend.Middleware
 
         public async Task InvokeAsync(HttpContext context, PruebaaspContext db)
         {
+            
             if (context.Request.Path.StartsWithSegments("/api"))
             {
                 if (!context.Request.Path.Equals("/api/Auth/login") &&
