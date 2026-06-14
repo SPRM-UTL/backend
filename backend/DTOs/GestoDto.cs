@@ -13,6 +13,9 @@ namespace backend.DTOs
         [JsonPropertyName("nombre_gesto")]
         public string? NombreGesto { get; set; }
 
+        [JsonPropertyName("icono")]
+        public string? Icono { get; set; }
+
         [JsonPropertyName("identificador_ia")]
         public int IdentificadorIa { get; set; }
 
