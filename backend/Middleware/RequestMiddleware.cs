@@ -40,7 +40,7 @@ namespace backend.Middleware
                     }
 
                     context.Items["UsuarioId"] = token.sk_usuario_id;
-                    token.FechaExpiracion = DateTime.Now.AddMinutes(30);
+                    token.FechaExpiracion = DateTime.Now.AddMonths(1);
                     await db.SaveChangesAsync();
                 } 
 
