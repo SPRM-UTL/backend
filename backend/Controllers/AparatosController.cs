@@ -417,4 +417,40 @@ public class AparatosController : ControllerBase
         Activo = control.activo,
         FechaCreacion = control.fecha_creacion
     };
+
+    [HttpGet("control")]
+    public async Task<ActionResult<AparatoControlDto>> ObtenerControl()
+    {
+        var aparatos = await _context.Aparatos
+         .Include(a => a.Tipo)
+         .Include(a => a.Accion)
+         .Include(a => a.Bluetooth)
+         .ToListAsync();
+
+        var aparatosDto = aparatos.Select(a => new AparatoDto
+        {
+            SkAparatoId = a.sk_aparato_id,
+            NombreAparato = a.nombre_aparato,
+            TipoAparato = a.Tipo?.nombre_tipo,
+            Icono = a.icono
+        }).ToList();
+
+        var response = new ControlResponseDto
+        {
+            Luces = aparatosDto
+                .Where(a => a.TipoAparato == "Luz")
+                .ToList(),
+
+            Bocinas = aparatosDto
+                .Where(a => a.TipoAparato == "Bocina")
+                .ToList(),
+
+            Ventiladores = aparatosDto
+                .Where(a => a.TipoAparato == "Ventilador")
+                .ToList()
+        };
+
+        return Ok(response);
+       
+    }
 }
