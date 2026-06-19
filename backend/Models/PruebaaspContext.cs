@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using Microsoft.EntityFrameworkCore;
 
@@ -64,6 +64,8 @@ public partial class PruebaaspContext : DbContext
 
             entity.Property(e => e.sk_aparato_tipo_id).HasColumnName("sk_aparato_tipo_id");
             entity.Property(e => e.nombre_tipo).HasMaxLength(50).HasColumnName("nombre_tipo");
+            entity.Property(e => e.icono).HasMaxLength(50).HasColumnName("icono");
+            entity.Property(e => e.es_asistente).HasColumnName("es_asistente").HasDefaultValue(false);
 
             entity.HasIndex(e => e.nombre_tipo).IsUnique();
         });

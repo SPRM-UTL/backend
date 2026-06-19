@@ -11,6 +11,18 @@ namespace backend.Models
         [MaxLength(50)]
         public string nombre_tipo { get; set; } = string.Empty;
 
+        [MaxLength(50)]
+        public string? icono { get; set; }
+
+        public bool es_asistente { get; set; } = false;
+
+        public bool soporta_bluetooth { get; set; } = false;
+
+        public bool soporta_wifi { get; set; } = true;
+
+        [MaxLength(255)]
+        public string? palabras_clave_busqueda { get; set; }
+
         [JsonIgnore]
         public List<Aparato>? Aparatos { get; set; }
     }
