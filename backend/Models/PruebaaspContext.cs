@@ -26,7 +26,8 @@ public partial class PruebaaspContext : DbContext
     public virtual DbSet<AparatoControl> AparatoControles { get; set; }
     public virtual DbSet<Tiempo> Tiempos { get; set; }
     public virtual DbSet<HistorialActividad> HistorialActividades { get; set; }
-
+    public DbSet<GestoDetalle> GestoDetalles { get; set; }
+    public DbSet<GestoMedia> GestoMedias { get; set; }
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder
@@ -218,7 +219,47 @@ public partial class PruebaaspContext : DbContext
         });
 
         OnModelCreatingPartial(modelBuilder);
+
+        // =================================================================
+        // CONFIGURACIÓN PARA MÓDULO DETALLE DEL GESTO
+        // =================================================================
+        modelBuilder.Entity<GestoDetalle>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.ToTable("gesto_detalle");
+
+            entity.Property(e => e.Id).HasColumnName("sk_gesto_detalle_id");
+            entity.Property(e => e.GestoId).HasColumnName("sk_gesto_id");
+            entity.Property(e => e.DuracionSegundos).HasPrecision(5, 2).HasColumnName("duracion_segundos");
+            entity.Property(e => e.IluminacionRecomendada).HasMaxLength(100).HasColumnName("iluminacion_recomendada");
+            entity.Property(e => e.DistanciaRecomendada).HasMaxLength(100).HasColumnName("distancia_recomendada");
+
+            // Configuración de la relación 1 a 1 con Gesto
+            entity.HasOne(d => d.Gesto)
+                .WithOne() // Si no agregaste la propiedad en Gesto.cs, déjalo vacío. Si la agregaste, pon: .WithOne(p => p.GestoDetalle)
+                .HasForeignKey<GestoDetalle>(d => d.GestoId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<GestoMedia>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.ToTable("gesto_media");
+
+            entity.Property(e => e.Id).HasColumnName("sk_media_id");
+            entity.Property(e => e.GestoDetalleId).HasColumnName("sk_gesto_detalle_id");
+            entity.Property(e => e.UrlArchivo).HasMaxLength(500).HasColumnName("url_archivo");
+            entity.Property(e => e.TipoMedia).HasColumnName("tipo_media");
+            entity.Property(e => e.Extension).HasMaxLength(10).HasColumnName("extension");
+
+            // Configuración de la relación 1 a N con GestoDetalle
+            entity.HasOne(d => d.GestoDetalle)
+                .WithMany(p => p.MediosReferencia)
+                .HasForeignKey(d => d.GestoDetalleId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
     }
 
     partial void OnModelCreatingPartial(ModelBuilder modelBuilder);
+
 }
