@@ -152,6 +152,42 @@ public class GestosController : ControllerBase
 
         return Ok();
     }
+    // Dentro de GestosController.cs
+    [HttpGet("{sk_gesto_id}/detalle")]
+    public async Task<ActionResult<GestoDetalleDto>> GetGestoDetalle(int sk_gesto_id)
+    {
+        var usuarioId = (int?)HttpContext.Items["UsuarioId"];
+
+        var detalle = await _context.GestoDetalles
+            .Include(gd => gd.Gesto)
+            .Include(gd => gd.MediosReferencia)
+            .FirstOrDefaultAsync(gd => gd.GestoId == sk_gesto_id && gd.Gesto.sk_usuario_id == usuarioId);
+
+        if (detalle == null)
+        {
+            return NotFound("No se encontró el detalle para el gesto especificado.");
+        }
+
+        // El mapeo limpio usando tu modelo final:
+        var dto = new GestoDetalleDto
+        {
+            SkGestoDetalleId = detalle.Id, // <--- Conecta con tu modelo
+            SkGestoId = detalle.GestoId,   // <--- Conecta con tu modelo
+            NombreGesto = detalle.Gesto?.nombre_gesto ?? string.Empty,
+            DuracionSegundos = detalle.DuracionSegundos,
+            IluminacionRecomendada = detalle.IluminacionRecomendada,
+            DistanciaRecomendada = detalle.DistanciaRecomendada,
+            MediosReferencia = detalle.MediosReferencia.Select(m => new GestoMediaDto
+            {
+                SkMediaId = m.Id,
+                UrlArchivo = m.UrlArchivo,
+                TipoMedia = m.TipoMedia,
+                Extension = m.Extension
+            }).ToList()
+        };
+
+        return Ok(dto);
+    }
 
     private bool GestoExists(int? sk_gesto_id)
     {
