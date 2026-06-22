@@ -1,4 +1,5 @@
 using backend.Services;
+using backend.Models;
 using Microsoft.AspNetCore.Mvc;
 using System.Net.WebSockets;
 using System.Text;
@@ -99,6 +100,47 @@ namespace backend.Controllers
                 deviceKey,
                 comando
             });
+        }
+
+        [HttpGet("status/{deviceKey}")]
+        public IActionResult GetStatus(string deviceKey)
+        {
+            if (string.IsNullOrWhiteSpace(deviceKey))
+            {
+                return BadRequest(new { error = "Falta el parámetro deviceKey." });
+            }
+
+            bool isConnected = _connections.TryGetOpenSocket(deviceKey, out _);
+
+            return Ok(new { connected = isConnected });
+        }
+
+        [HttpPost("toggle/{sk_aparato_id}")]
+        public async Task<IActionResult> ToggleAparato(
+            int sk_aparato_id, 
+            [FromQuery] bool estado,
+            [FromServices] PruebaaspContext context,
+            CancellationToken cancellationToken)
+        {
+            var config = context.AparatoConfiguracionesRed.FirstOrDefault(c => c.sk_aparato_id == sk_aparato_id);
+            if (config == null || string.IsNullOrWhiteSpace(config.device_key))
+            {
+                return NotFound("El aparato no tiene configuración de red o deviceKey.");
+            }
+
+            if (!_connections.TryGetOpenSocket(config.device_key, out var socket))
+            {
+                return BadRequest("El dispositivo no está conectado actualmente.");
+            }
+
+            string comando = estado ? "ON" : "OFF";
+            await socket!.SendAsync(
+                Encoding.UTF8.GetBytes(comando),
+                WebSocketMessageType.Text,
+                true,
+                cancellationToken);
+
+            return Ok(new { success = true, comando });
         }
     }
 }

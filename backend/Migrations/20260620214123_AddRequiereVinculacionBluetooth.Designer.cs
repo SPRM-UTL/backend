@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using backend.Models;
 
@@ -11,9 +12,11 @@ using backend.Models;
 namespace backend.Migrations
 {
     [DbContext(typeof(PruebaaspContext))]
-    partial class PruebaaspContextModelSnapshot : ModelSnapshot
+    [Migration("20260620214123_AddRequiereVinculacionBluetooth")]
+    partial class AddRequiereVinculacionBluetooth
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -342,79 +345,6 @@ namespace backend.Migrations
                     b.ToTable("gesto", (string)null);
                 });
 
-            modelBuilder.Entity("backend.Models.GestoDetalle", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
-                        .HasColumnName("sk_gesto_detalle_id");
-
-                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("DistanciaRecomendada")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("varchar(100)")
-                        .HasColumnName("distancia_recomendada");
-
-                    b.Property<decimal>("DuracionSegundos")
-                        .HasPrecision(5, 2)
-                        .HasColumnType("decimal(5,2)")
-                        .HasColumnName("duracion_segundos");
-
-                    b.Property<int>("GestoId")
-                        .HasColumnType("int")
-                        .HasColumnName("sk_gesto_id");
-
-                    b.Property<string>("IluminacionRecomendada")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("varchar(100)")
-                        .HasColumnName("iluminacion_recomendada");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("GestoId")
-                        .IsUnique();
-
-                    b.ToTable("gesto_detalle", (string)null);
-                });
-
-            modelBuilder.Entity("backend.Models.GestoMedia", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
-                        .HasColumnName("sk_media_id");
-
-                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("Extension")
-                        .HasMaxLength(10)
-                        .HasColumnType("varchar(10)")
-                        .HasColumnName("extension");
-
-                    b.Property<int>("GestoDetalleId")
-                        .HasColumnType("int")
-                        .HasColumnName("sk_gesto_detalle_id");
-
-                    b.Property<int>("TipoMedia")
-                        .HasColumnType("int")
-                        .HasColumnName("tipo_media");
-
-                    b.Property<string>("UrlArchivo")
-                        .IsRequired()
-                        .HasMaxLength(500)
-                        .HasColumnType("varchar(500)")
-                        .HasColumnName("url_archivo");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("GestoDetalleId");
-
-                    b.ToTable("gesto_media", (string)null);
-                });
-
             modelBuilder.Entity("backend.Models.HistorialActividad", b =>
                 {
                     b.Property<int>("sk_actividad_id")
@@ -657,28 +587,6 @@ namespace backend.Migrations
                     b.Navigation("Usuario");
                 });
 
-            modelBuilder.Entity("backend.Models.GestoDetalle", b =>
-                {
-                    b.HasOne("backend.Models.Gesto", "Gesto")
-                        .WithOne()
-                        .HasForeignKey("backend.Models.GestoDetalle", "GestoId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Gesto");
-                });
-
-            modelBuilder.Entity("backend.Models.GestoMedia", b =>
-                {
-                    b.HasOne("backend.Models.GestoDetalle", "GestoDetalle")
-                        .WithMany("MediosReferencia")
-                        .HasForeignKey("GestoDetalleId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("GestoDetalle");
-                });
-
             modelBuilder.Entity("backend.Models.HistorialActividad", b =>
                 {
                     b.HasOne("backend.Models.Aparato", "Aparato")
@@ -753,11 +661,6 @@ namespace backend.Migrations
             modelBuilder.Entity("backend.Models.Gesto", b =>
                 {
                     b.Navigation("Historico_Actividad");
-                });
-
-            modelBuilder.Entity("backend.Models.GestoDetalle", b =>
-                {
-                    b.Navigation("MediosReferencia");
                 });
 
             modelBuilder.Entity("backend.Models.Tiempo", b =>
