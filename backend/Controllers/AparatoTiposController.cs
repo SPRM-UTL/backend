@@ -19,7 +19,7 @@ public class AparatoTiposController : ControllerBase
     public async Task<ActionResult<IEnumerable<AparatoTipoDto>>> GetAparatoTipos()
     {
         return await _context.AparatoTipos
-            .OrderByDescending(t => t.es_asistente) // El asistente va primero
+            .OrderBy(t => t.orden)
             .ThenBy(t => t.nombre_tipo)
             .Select(t => new AparatoTipoDto
             {
@@ -29,6 +29,8 @@ public class AparatoTiposController : ControllerBase
                 EsAsistente = t.es_asistente,
                 SoportaBluetooth = t.soporta_bluetooth,
                 SoportaWifi = t.soporta_wifi,
+                RequiereVinculacionBluetooth = t.requiere_vinculacion_bluetooth,
+                Orden = t.orden,
                 PalabrasClaveBusqueda = t.palabras_clave_busqueda
             })
             .ToListAsync();

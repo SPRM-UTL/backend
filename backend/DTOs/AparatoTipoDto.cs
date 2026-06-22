@@ -22,6 +22,12 @@ namespace backend.DTOs
         [JsonPropertyName("soporta_wifi")]
         public bool SoportaWifi { get; set; }
 
+        [JsonPropertyName("requiere_vinculacion_bluetooth")]
+        public bool RequiereVinculacionBluetooth { get; set; }
+
+        [JsonPropertyName("orden")]
+        public int Orden { get; set; }
+
         [JsonPropertyName("palabras_clave_busqueda")]
         public string? PalabrasClaveBusqueda { get; set; }
     }

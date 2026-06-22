@@ -20,6 +20,10 @@ namespace backend.Models
 
         public bool soporta_wifi { get; set; } = true;
 
+        public bool requiere_vinculacion_bluetooth { get; set; } = true;
+
+        public int orden { get; set; } = 99;
+
         [MaxLength(255)]
         public string? palabras_clave_busqueda { get; set; }
 
