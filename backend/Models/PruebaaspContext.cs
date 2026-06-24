@@ -119,7 +119,7 @@ public partial class PruebaaspContext : DbContext
             entity.Property(e => e.fecha_ultima_conexion).HasColumnName("fecha_ultima_conexion");
 
             entity.HasIndex(e => e.sk_aparato_id).IsUnique();
-            entity.HasIndex(e => e.device_key).IsUnique();
+            entity.HasIndex(e => e.device_key).IsUnique(false);
             entity.HasOne(e => e.Aparato)
                 .WithOne(e => e.ConfiguracionRed)
                 .HasForeignKey<AparatoConfiguracionRed>(e => e.sk_aparato_id)
