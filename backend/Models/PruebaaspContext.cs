@@ -28,6 +28,8 @@ public partial class PruebaaspContext : DbContext
     public virtual DbSet<HistorialActividad> HistorialActividades { get; set; }
     public DbSet<GestoDetalle> GestoDetalles { get; set; }
     public DbSet<GestoMedia> GestoMedias { get; set; }
+    public virtual DbSet<Casa> Casas { get; set; }
+    public virtual DbSet<Habitacion> Habitaciones { get; set; }
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder
@@ -56,6 +58,41 @@ public partial class PruebaaspContext : DbContext
                 .WithMany(e => e.Aparatos)
                 .HasForeignKey(e => e.sk_aparato_accion_id)
                 .OnDelete(DeleteBehavior.SetNull);
+
+            entity.HasOne(e => e.Habitacion)
+                .WithMany(e => e.Aparatos)
+                .HasForeignKey(e => e.sk_habitacion_id)
+                .OnDelete(DeleteBehavior.SetNull);
+        });
+
+        modelBuilder.Entity<Casa>(entity =>
+        {
+            entity.HasKey(e => e.sk_casa_id);
+            entity.ToTable("casa");
+
+            entity.Property(e => e.sk_casa_id).HasColumnName("sk_casa_id");
+            entity.Property(e => e.nombre_casa).HasMaxLength(100).HasColumnName("nombre_casa");
+            entity.Property(e => e.sk_usuario_id).HasColumnName("sk_usuario_id");
+
+            entity.HasOne(e => e.Usuario)
+                .WithMany(e => e.Casas)
+                .HasForeignKey(e => e.sk_usuario_id)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<Habitacion>(entity =>
+        {
+            entity.HasKey(e => e.sk_habitacion_id);
+            entity.ToTable("habitacion");
+
+            entity.Property(e => e.sk_habitacion_id).HasColumnName("sk_habitacion_id");
+            entity.Property(e => e.nombre_habitacion).HasMaxLength(100).HasColumnName("nombre_habitacion");
+            entity.Property(e => e.sk_casa_id).HasColumnName("sk_casa_id");
+
+            entity.HasOne(e => e.Casa)
+                .WithMany(e => e.Habitaciones)
+                .HasForeignKey(e => e.sk_casa_id)
+                .OnDelete(DeleteBehavior.Cascade);
         });
 
         modelBuilder.Entity<AparatoTipo>(entity =>
