@@ -34,5 +34,8 @@ namespace backend.Models
 
         [JsonIgnore]
         public List<Gesto>? Gestos { get; set; }
+
+        [JsonIgnore]
+        public List<Casa>? Casas { get; set; }
     }
 }

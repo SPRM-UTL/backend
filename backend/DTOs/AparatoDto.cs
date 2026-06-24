@@ -1,4 +1,4 @@
-﻿using System.Text.Json.Serialization;
+using System.Text.Json.Serialization;
 
 namespace backend.DTOs
 {
@@ -30,5 +30,11 @@ namespace backend.DTOs
 
         [JsonPropertyName("fecha_sincronizacion")]
         public DateTime? FechaSincronizacion { get; set; }
+
+        [JsonPropertyName("sk_habitacion_id")]
+        public int? SkHabitacionId { get; set; }
+
+        [JsonPropertyName("nombre_habitacion")]
+        public string? NombreHabitacion { get; set; }
     }
 }

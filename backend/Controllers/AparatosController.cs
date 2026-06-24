@@ -32,7 +32,9 @@ public class AparatosController : ControllerBase
                 Icono = a.icono,
                 MacBluetooth = a.Bluetooth == null ? null : a.Bluetooth.mac_bluetooth,
                 NombreBluetooth = a.Bluetooth == null ? null : a.Bluetooth.nombre_bluetooth,
-                FechaSincronizacion = a.fecha_sincronizacion
+                FechaSincronizacion = a.fecha_sincronizacion,
+                SkHabitacionId = a.sk_habitacion_id,
+                NombreHabitacion = a.Habitacion == null ? null : a.Habitacion.nombre_habitacion
             })
             .ToListAsync();
     }
@@ -54,7 +56,9 @@ public class AparatosController : ControllerBase
                 Icono = a.icono,
                 MacBluetooth = a.Bluetooth == null ? null : a.Bluetooth.mac_bluetooth,
                 NombreBluetooth = a.Bluetooth == null ? null : a.Bluetooth.nombre_bluetooth,
-                FechaSincronizacion = a.fecha_sincronizacion
+                FechaSincronizacion = a.fecha_sincronizacion,
+                SkHabitacionId = a.sk_habitacion_id,
+                NombreHabitacion = a.Habitacion == null ? null : a.Habitacion.nombre_habitacion
             })
             .FirstOrDefaultAsync();
 
@@ -304,6 +308,7 @@ public class AparatosController : ControllerBase
         aparato.nombre_aparato = dto.NombreAparato;
         aparato.icono = dto.Icono;
         aparato.fecha_sincronizacion = dto.FechaSincronizacion;
+        aparato.sk_habitacion_id = dto.SkHabitacionId;
         aparato.Tipo = await GetOrCreateTipo(dto.TipoAparato);
         aparato.Accion = await GetOrCreateAccion(dto.AccionNombre, dto.ComandoBluetooth);
         ApplyBluetooth(aparato, dto);

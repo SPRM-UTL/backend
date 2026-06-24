@@ -52,5 +52,11 @@ namespace backend.Models
         [ForeignKey("sk_usuario_id")]
         [JsonIgnore]
         public Usuario? Usuario { get; set; }
+
+        public int? sk_habitacion_id { get; set; }
+
+        [ForeignKey(nameof(sk_habitacion_id))]
+        [JsonIgnore]
+        public Habitacion? Habitacion { get; set; }
     }
 }
