@@ -34,6 +34,25 @@ namespace backend.Services
 
             if (configuracion is null)
             {
+                var aparatoBluetooth = await db.AparatoBluetooth
+                    .FirstOrDefaultAsync(b => b.mac_bluetooth == normalizedDeviceKey, cancellationToken);
+
+                if (aparatoBluetooth != null)
+                {
+                    configuracion = new AparatoConfiguracionRed
+                    {
+                        sk_aparato_id = aparatoBluetooth.sk_aparato_id,
+                        device_key = normalizedDeviceKey,
+                        activo = true,
+                        fecha_creacion = DateTime.UtcNow,
+                        fecha_ultima_conexion = DateTime.UtcNow
+                    };
+                    db.AparatoConfiguracionesRed.Add(configuracion);
+                    await db.SaveChangesAsync(cancellationToken);
+                    
+                    return configuracion;
+                }
+                
                 return null;
             }
 
