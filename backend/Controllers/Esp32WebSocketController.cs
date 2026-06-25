@@ -26,6 +26,7 @@ namespace backend.Controllers
         [HttpGet]
         public async Task<IActionResult> Connect(
             [FromQuery] string deviceKey,
+            [FromQuery] string? token,
             [FromQuery] string? targetDeviceKey,
             CancellationToken cancellationToken)
         {
@@ -43,7 +44,7 @@ namespace backend.Controllers
             Console.WriteLine("DeviceKey: " + normalizedDeviceKey);
             using var socket = await HttpContext.WebSockets.AcceptWebSocketAsync();
 
-            var sourceDevice = await _router.RegisterOrUpdateDeviceAsync(normalizedDeviceKey, cancellationToken);
+            var sourceDevice = await _router.RegisterOrUpdateDeviceAsync(normalizedDeviceKey, token, cancellationToken);
 
             if (sourceDevice == null)
             {
