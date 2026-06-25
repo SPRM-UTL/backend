@@ -115,6 +115,13 @@ namespace backend.Controllers
             return Ok(new { connected = isConnected });
         }
 
+        [HttpGet("status/all")]
+        public IActionResult GetAllStatus()
+        {
+            var connectedDevices = _connections.GetAllConnectedDeviceKeys();
+            return Ok(new { connectedDevices });
+        }
+
         [HttpPost("toggle/{sk_aparato_id}")]
         public async Task<IActionResult> ToggleAparato(
             int sk_aparato_id, 

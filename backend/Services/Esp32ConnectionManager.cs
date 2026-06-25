@@ -58,5 +58,12 @@ namespace backend.Services
         {
             return deviceKey.Trim();
         }
+
+        public IEnumerable<string> GetAllConnectedDeviceKeys()
+        {
+            return _sockets
+                .Where(kvp => kvp.Value.State == WebSocketState.Open)
+                .Select(kvp => kvp.Key);
+        }
     }
 }
