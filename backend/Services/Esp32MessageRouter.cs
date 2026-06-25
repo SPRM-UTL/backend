@@ -31,7 +31,7 @@ namespace backend.Services
             var normalizedDeviceKey = deviceKey.Trim();
 
             var configuracion = await db.AparatoConfiguracionesRed
-                .FirstOrDefaultAsync(item => item.device_key == normalizedDeviceKey && item.activo, cancellationToken);
+                .FirstOrDefaultAsync(item => item.device_key == normalizedDeviceKey, cancellationToken);
 
             if (configuracion is null)
             {
@@ -64,22 +64,38 @@ namespace backend.Services
 
                 if (aparatoBluetooth != null)
                 {
-                    configuracion = new AparatoConfiguracionRed
+                    // Verify if a configuration already exists for this aparato_id to avoid duplicate key
+                    var existingConfig = await db.AparatoConfiguracionesRed
+                        .FirstOrDefaultAsync(c => c.sk_aparato_id == aparatoBluetooth.sk_aparato_id, cancellationToken);
+
+                    if (existingConfig != null)
                     {
-                        sk_aparato_id = aparatoBluetooth.sk_aparato_id,
-                        device_key = normalizedDeviceKey,
-                        activo = true,
-                        fecha_creacion = DateTime.UtcNow,
-                        fecha_ultima_conexion = DateTime.UtcNow
-                    };
-                    db.AparatoConfiguracionesRed.Add(configuracion);
-                    await db.SaveChangesAsync(cancellationToken);
+                        existingConfig.device_key = normalizedDeviceKey;
+                        existingConfig.activo = true;
+                        existingConfig.fecha_ultima_conexion = DateTime.UtcNow;
+                        configuracion = existingConfig;
+                    }
+                    else
+                    {
+                        configuracion = new AparatoConfiguracionRed
+                        {
+                            sk_aparato_id = aparatoBluetooth.sk_aparato_id,
+                            device_key = normalizedDeviceKey,
+                            activo = true,
+                            fecha_creacion = DateTime.UtcNow,
+                            fecha_ultima_conexion = DateTime.UtcNow
+                        };
+                        db.AparatoConfiguracionesRed.Add(configuracion);
+                    }
                     
+                    await db.SaveChangesAsync(cancellationToken);
                     return configuracion;
                 }
                 
                 return null;
             }
+
+            configuracion.activo = true;
 
             configuracion.fecha_ultima_conexion = DateTime.UtcNow;
             await db.SaveChangesAsync(cancellationToken);
