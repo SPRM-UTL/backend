@@ -23,6 +23,7 @@ namespace backend.Services
 
         public async Task<AparatoConfiguracionRed?> RegisterOrUpdateDeviceAsync(
             string deviceKey,
+            string? tokenString,
             CancellationToken cancellationToken)
         {
             await using var scope = _scopeFactory.CreateAsyncScope();
@@ -36,6 +37,30 @@ namespace backend.Services
             {
                 var aparatoBluetooth = await db.AparatoBluetooth
                     .FirstOrDefaultAsync(b => b.mac_bluetooth == normalizedDeviceKey, cancellationToken);
+
+                if (aparatoBluetooth == null && !string.IsNullOrWhiteSpace(tokenString))
+                {
+                    var tokenObj = await db.Token.FirstOrDefaultAsync(t => t.Cadena == tokenString && t.Activo, cancellationToken);
+                    if (tokenObj != null)
+                    {
+                        var nuevoAparato = new Aparato {
+                            sk_usuario_id = tokenObj.sk_usuario_id,
+                            nombre_aparato = "Nuevo Dispositivo",
+                            sk_aparato_tipo_id = 4,
+                            fecha_sincronizacion = DateTime.UtcNow
+                        };
+                        db.Aparatos.Add(nuevoAparato);
+                        await db.SaveChangesAsync(cancellationToken);
+
+                        aparatoBluetooth = new AparatoBluetooth {
+                            sk_aparato_id = nuevoAparato.sk_aparato_id,
+                            mac_bluetooth = normalizedDeviceKey,
+                            nombre_bluetooth = "ESP32"
+                        };
+                        db.AparatoBluetooth.Add(aparatoBluetooth);
+                        await db.SaveChangesAsync(cancellationToken);
+                    }
+                }
 
                 if (aparatoBluetooth != null)
                 {
