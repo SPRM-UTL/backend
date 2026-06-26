@@ -51,6 +51,12 @@ namespace backend.Middleware
 
                 await _next(context);
 
+                if (context.Response.StatusCode == 204 || context.Response.StatusCode == 304)
+                {
+                    context.Response.Body = originalBodyStream;
+                    return;
+                }
+
                 responseBody.Seek(0, SeekOrigin.Begin);
 
                 var responseText = await new StreamReader(responseBody).ReadToEndAsync();

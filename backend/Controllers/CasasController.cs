@@ -55,7 +55,7 @@ public class CasasController : ControllerBase
         _context.Casas.Add(casa);
         await _context.SaveChangesAsync();
 
-        return CreatedAtAction(nameof(GetCasas), new { id = casa.sk_casa_id }, new CasaDto
+        return Created("", new CasaDto
         {
             SkCasaId = casa.sk_casa_id,
             NombreCasa = casa.nombre_casa,
