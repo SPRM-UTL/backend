@@ -75,7 +75,7 @@ public class CasasController : ControllerBase
         casa.nombre_casa = dto.NombreCasa;
         await _context.SaveChangesAsync();
 
-        return NoContent();
+        return Ok(new { message = "Casa actualizada" });
     }
 
     [HttpDelete("{id}")]
@@ -90,6 +90,6 @@ public class CasasController : ControllerBase
         _context.Casas.Remove(casa);
         await _context.SaveChangesAsync();
 
-        return NoContent();
+        return Ok(new { message = "Casa eliminada" });
     }
 }

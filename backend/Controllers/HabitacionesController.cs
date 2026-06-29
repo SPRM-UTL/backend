@@ -92,7 +92,7 @@ public class HabitacionesController : ControllerBase
 
         await _context.SaveChangesAsync();
 
-        return NoContent();
+        return Ok(new { message = "Habitación actualizada" });
     }
 
     [HttpDelete("{id}")]
@@ -111,6 +111,6 @@ public class HabitacionesController : ControllerBase
         _context.Habitaciones.Remove(habitacion);
         await _context.SaveChangesAsync();
 
-        return NoContent();
+        return Ok(new { message = "Habitación eliminada" });
     }
 }
