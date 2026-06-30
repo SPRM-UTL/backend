@@ -40,7 +40,11 @@ namespace backend.Services
 
                 if (aparatoBluetooth == null && !string.IsNullOrWhiteSpace(tokenString))
                 {
-                    var tokenObj = await db.Token.FirstOrDefaultAsync(t => t.Cadena == tokenString && t.Activo, cancellationToken);
+                    // Los '+' en el token se decodifican como espacios en query params de URL.
+                    // Se normaliza antes de comparar con la BD.
+                    var normalizedToken = tokenString.Replace(" ", "+");
+                    var tokenObj = await db.Token.FirstOrDefaultAsync(t => t.Cadena == normalizedToken && t.Activo, cancellationToken);
+
                     if (tokenObj != null)
                     {
                         var nuevoAparato = new Aparato {
