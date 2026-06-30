@@ -1,0 +1,1270 @@
+{
+	"info": {
+		"_postman_id": "8b5f6cd4-f3c5-4a6c-941f-829d10e543b1",
+		"name": "SPRM API Collection",
+		"description": "Colección de peticiones para el backend de SPRM. Incluye todas las rutas de controladores, configuraciones de red, gestos, historial de actividad, tiempo, usuarios y WebSockets.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "1. Autenticación (Auth)",
+			"item": [
+				{
+					"name": "Registrar Usuario",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"Nombre\": \"Juan Perez\",\n  \"Correo\": \"juan.perez@example.com\",\n  \"Contrasenia\": \"Segura123!\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/Auth/register",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"Auth",
+								"register"
+							]
+						},
+						"description": "Crea un nuevo usuario en la base de datos."
+					},
+					"response": []
+				},
+				{
+					"name": "Iniciar Sesión (Login)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"    var responseJson = pm.response.json();",
+									"    var token = null;",
+									"    ",
+									"    // Manejar respuesta directa o envuelta por RequestMiddleware",
+									"    if (responseJson.data && responseJson.data.token) {",
+									"        token = responseJson.data.token;",
+									"    } else if (responseJson.token) {",
+									"        token = responseJson.token;",
+									"    }",
+									"    ",
+									"    if (token) {",
+									"        pm.collectionVariables.set(\"token\", token);",
+									"        console.log(\"Token guardado exitosamente:\", token);",
+									"    }",
+									"}"
+								],
+								"type": "javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"Correo\": \"juan.perez@example.com\",\n  \"Contrasenia\": \"Segura123!\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/Auth/login",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"Auth",
+								"login"
+							]
+						},
+						"description": "Autentica al usuario y guarda automáticamente el token de portador devuelto en la variable de la colección."
+					},
+					"response": []
+				},
+				{
+					"name": "Cerrar Sesión (Logout)",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/Auth/logout",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"Auth",
+								"logout"
+							]
+						},
+						"description": "Desactiva el token actual del usuario en la base de datos."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "2. Aparatos (Dispositivos)",
+			"item": [
+				{
+					"name": "Listar Aparatos",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/aparatos",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"aparatos"
+							]
+						},
+						"description": "Obtiene la lista de todos los aparatos vinculados al usuario autenticado."
+					},
+					"response": []
+				},
+				{
+					"name": "Obtener Aparato por ID",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/aparatos/:sk_aparato_id",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"aparatos",
+								":sk_aparato_id"
+							],
+							"variable": [
+								{
+									"key": "sk_aparato_id",
+									"value": "1"
+								}
+							]
+						},
+						"description": "Obtiene los detalles de un aparato específico por su ID primario."
+					},
+					"response": []
+				},
+				{
+					"name": "Crear Aparato",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"nombre_aparato\": \"Foco de Sala\",\n  \"tipo_aparato\": \"Luz\",\n  \"accion_nombre\": \"Encender\",\n  \"comando_bluetooth\": \"L1\",\n  \"icono\": \"lightbulb\",\n  \"mac_bluetooth\": \"AA:BB:CC:DD:EE:FF\",\n  \"nombre_bluetooth\": \"ESP32-LuzSala\",\n  \"fecha_sincronizacion\": \"2026-06-16T13:00:00Z\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/aparatos",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"aparatos"
+							]
+						},
+						"description": "Crea un nuevo aparato para el usuario actual."
+					},
+					"response": []
+				},
+				{
+					"name": "Actualizar Aparato",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"sk_aparato_id\": 1,\n  \"nombre_aparato\": \"Foco de Sala Modificado\",\n  \"tipo_aparato\": \"Luz\",\n  \"accion_nombre\": \"Encender\",\n  \"comando_bluetooth\": \"L1\",\n  \"icono\": \"lightbulb\",\n  \"mac_bluetooth\": \"AA:BB:CC:DD:EE:FF\",\n  \"nombre_bluetooth\": \"ESP32-LuzSala\",\n  \"fecha_sincronizacion\": \"2026-06-16T13:30:00Z\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/aparatos/:sk_aparato_id",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"aparatos",
+								":sk_aparato_id"
+							],
+							"variable": [
+								{
+									"key": "sk_aparato_id",
+									"value": "1"
+								}
+							]
+						},
+						"description": "Actualiza la información de un aparato. Nota: El `sk_aparato_id` en la URL debe coincidir con el del cuerpo."
+					},
+					"response": []
+				},
+				{
+					"name": "Eliminar Aparato",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/aparatos/:sk_aparato_id",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"aparatos",
+								":sk_aparato_id"
+							],
+							"variable": [
+								{
+									"key": "sk_aparato_id",
+									"value": "1"
+								}
+							]
+						},
+						"description": "Elimina un aparato por su ID."
+					},
+					"response": []
+				},
+				{
+					"name": "Obtener Panel de Control",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/aparatos/control",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"aparatos",
+								"control"
+							]
+						},
+						"description": "Obtiene listas categorizadas de aparatos agrupados por tipo (Luces, Bocinas, Ventiladores)."
+					},
+					"response": []
+				},
+				{
+					"name": "Obtener Configuración de Red",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/aparatos/:sk_aparato_id/configuracion-red",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"aparatos",
+								":sk_aparato_id",
+								"configuracion-red"
+							],
+							"variable": [
+								{
+									"key": "sk_aparato_id",
+									"value": "1"
+								}
+							]
+						},
+						"description": "Obtiene la configuración de red asociada al aparato (IP, MAC, Puerto, Protocolo, etc.)."
+					},
+					"response": []
+				},
+				{
+					"name": "Guardar/Actualizar Configuración de Red",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"sk_aparato_id\": 1,\n  \"device_key\": \"dev_key_foco_sala\",\n  \"ip_address\": \"192.168.1.105\",\n  \"mac_address\": \"30:AE:A4:07:0D:64\",\n  \"host_name\": \"ESP32-LuzSala\",\n  \"puerto_socket\": 80,\n  \"protocolo_socket\": \"ws\",\n  \"ruta_socket\": \"/ws\",\n  \"activo\": true\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/aparatos/:sk_aparato_id/configuracion-red",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"aparatos",
+								":sk_aparato_id",
+								"configuracion-red"
+							],
+							"variable": [
+								{
+									"key": "sk_aparato_id",
+									"value": "1"
+								}
+							]
+						},
+						"description": "Guarda o actualiza la configuración de red para el aparato indicado."
+					},
+					"response": []
+				},
+				{
+					"name": "Listar Relaciones de Control",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/aparatos/:sk_aparato_controlador_id/controles",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"aparatos",
+								":sk_aparato_controlador_id",
+								"controles"
+							],
+							"variable": [
+								{
+									"key": "sk_aparato_controlador_id",
+									"value": "1"
+								}
+							]
+						},
+						"description": "Obtiene la lista de relaciones de control donde el aparato indicado actúa como el emisor/controlador."
+					},
+					"response": []
+				},
+				{
+					"name": "Asociar/Actualizar Relación de Control",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"sk_aparato_controlado_id\": 2,\n  \"comando_socket\": \"LIGHT_ON\",\n  \"activo\": true\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/aparatos/:sk_aparato_controlador_id/controles",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"aparatos",
+								":sk_aparato_controlador_id",
+								"controles"
+							],
+							"variable": [
+								{
+									"key": "sk_aparato_controlador_id",
+									"value": "1"
+								}
+							]
+						},
+						"description": "Crea o actualiza la relación de control para que un dispositivo controle a otro enviando comandos socket."
+					},
+					"response": []
+				},
+				{
+					"name": "Eliminar Relación de Control",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/aparatos/:sk_aparato_controlador_id/controles/:sk_aparato_controlado_id",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"aparatos",
+								":sk_aparato_controlador_id",
+								"controles",
+								":sk_aparato_controlado_id"
+							],
+							"variable": [
+								{
+									"key": "sk_aparato_controlador_id",
+									"value": "1"
+								},
+								{
+									"key": "sk_aparato_controlado_id",
+									"value": "2"
+								}
+							]
+						},
+						"description": "Elimina la relación de control entre el controlador y el controlado."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "3. Gestos",
+			"item": [
+				{
+					"name": "Listar Gestos",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/gestos",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"gestos"
+							]
+						},
+						"description": "Obtiene todos los gestos creados por el usuario autenticado."
+					},
+					"response": []
+				},
+				{
+					"name": "Obtener Gesto por ID",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/gestos/:sk_gesto_id",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"gestos",
+								":sk_gesto_id"
+							],
+							"variable": [
+								{
+									"key": "sk_gesto_id",
+									"value": "1"
+								}
+							]
+						},
+						"description": "Obtiene los detalles de un gesto específico por su ID."
+					},
+					"response": []
+				},
+				{
+					"name": "Crear Gesto",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"bk_gesto_id\": 10,\n  \"nombre_gesto\": \"Manos Arriba\",\n  \"icono\": \"hand-up\",\n  \"identificador_ia\": 2,\n  \"nivel_confianza_minimo\": 0.85,\n  \"tipo_disparador_nombre\": \"Detección única\",\n  \"sk_aparato_id\": 1\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/gestos",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"gestos"
+							]
+						},
+						"description": "Registra un nuevo gesto. Nota: El `nombre_gesto` debe ser uno de: \"Manos Arriba\", \"Una Mano Arriba\", \"Agitar la Mano\", \"Abrir Puño\", \"Cerrar Puño\"."
+					},
+					"response": []
+				},
+				{
+					"name": "Actualizar Gesto",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"sk_gesto_id\": 1,\n  \"bk_gesto_id\": 10,\n  \"nombre_gesto\": \"Una Mano Arriba\",\n  \"icono\": \"hand-up-modified\",\n  \"identificador_ia\": 2,\n  \"nivel_confianza_minimo\": 0.90,\n  \"tipo_disparador_nombre\": \"Detección única\",\n  \"sk_aparato_id\": 1\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/gestos/:sk_gesto_id",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"gestos",
+								":sk_gesto_id"
+							],
+							"variable": [
+								{
+									"key": "sk_gesto_id",
+									"value": "1"
+								}
+							]
+						},
+						"description": "Actualiza la información de un gesto."
+					},
+					"response": []
+				},
+				{
+					"name": "Eliminar Gesto",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/gestos/:sk_gesto_id",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"gestos",
+								":sk_gesto_id"
+							],
+							"variable": [
+								{
+									"key": "sk_gesto_id",
+									"value": "1"
+								}
+							]
+						},
+						"description": "Elimina un gesto por su ID."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "4. Historial de Actividad",
+			"item": [
+				{
+					"name": "Listar Historial de Actividad",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/historial-actividad",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"historial-actividad"
+							]
+						},
+						"description": "Obtiene la lista con formato DTO de todas las actividades ejecutadas."
+					},
+					"response": []
+				},
+				{
+					"name": "Obtener Detalle del Historial",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/historial-actividad/:sk_actividad_id",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"historial-actividad",
+								":sk_actividad_id"
+							],
+							"variable": [
+								{
+									"key": "sk_actividad_id",
+									"value": "1"
+								}
+							]
+						},
+						"description": "Obtiene los detalles del modelo completo de una entrada en el historial de actividad."
+					},
+					"response": []
+				},
+				{
+					"name": "Registrar Actividad",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"sk_usuario_id\": 1,\n  \"sk_gesto_id\": 1,\n  \"sk_aparato_id\": 1,\n  \"sk_tiempo_id\": 1,\n  \"confianza_ia\": 95.80,\n  \"tiempo_respuesta\": 200,\n  \"ejecucion_exitosa\": true\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/historial-actividad",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"historial-actividad"
+							]
+						},
+						"description": "Registra una nueva entrada de actividad en el historial."
+					},
+					"response": []
+				},
+				{
+					"name": "Actualizar Registro de Actividad",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"sk_actividad_id\": 1,\n  \"sk_usuario_id\": 1,\n  \"sk_gesto_id\": 1,\n  \"sk_aparato_id\": 1,\n  \"sk_tiempo_id\": 1,\n  \"confianza_ia\": 96.50,\n  \"tiempo_respuesta\": 180,\n  \"ejecucion_exitosa\": true\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/historial-actividad/:sk_actividad_id",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"historial-actividad",
+								":sk_actividad_id"
+							],
+							"variable": [
+								{
+									"key": "sk_actividad_id",
+									"value": "1"
+								}
+							]
+						},
+						"description": "Actualiza la información de una entrada en el historial."
+					},
+					"response": []
+				},
+				{
+					"name": "Eliminar Registro de Actividad",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/historial-actividad/:sk_actividad_id",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"historial-actividad",
+								":sk_actividad_id"
+							],
+							"variable": [
+								{
+									"key": "sk_actividad_id",
+									"value": "1"
+								}
+							]
+						},
+						"description": "Elimina un registro de actividad del historial."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "5. Tiempos (Horarios)",
+			"item": [
+				{
+					"name": "Listar Tiempos",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/tiempo",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"tiempo"
+							]
+						},
+						"description": "Obtiene la lista de los registros de tiempo almacenados."
+					},
+					"response": []
+				},
+				{
+					"name": "Obtener Tiempo por ID",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/tiempo/:sk_tiempo_id",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"tiempo",
+								":sk_tiempo_id"
+							],
+							"variable": [
+								{
+									"key": "sk_tiempo_id",
+									"value": "1"
+								}
+							]
+						},
+						"description": "Obtiene un registro de tiempo específico por su ID."
+					},
+					"response": []
+				},
+				{
+					"name": "Crear Tiempo",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"fecha_completa\": \"2026-06-16\",\n  \"anio\": 2026,\n  \"mes_numero\": 6,\n  \"mes_nombre\": \"Junio\",\n  \"dia_semana_nombre\": \"Martes\",\n  \"hora_periodo\": 13\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/tiempo",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"tiempo"
+							]
+						},
+						"description": "Crea una nueva entidad de tiempo."
+					},
+					"response": []
+				},
+				{
+					"name": "Actualizar Tiempo",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"sk_tiempo_id\": 1,\n  \"fecha_completa\": \"2026-06-16\",\n  \"anio\": 2026,\n  \"mes_numero\": 6,\n  \"mes_nombre\": \"Junio\",\n  \"dia_semana_nombre\": \"Martes\",\n  \"hora_periodo\": 14\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/tiempo/:sk_tiempo_id",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"tiempo",
+								":sk_tiempo_id"
+							],
+							"variable": [
+								{
+									"key": "sk_tiempo_id",
+									"value": "1"
+								}
+							]
+						},
+						"description": "Actualiza la información de un registro de tiempo."
+					},
+					"response": []
+				},
+				{
+					"name": "Eliminar Tiempo",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/tiempo/:sk_tiempo_id",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"tiempo",
+								":sk_tiempo_id"
+							],
+							"variable": [
+								{
+									"key": "sk_tiempo_id",
+									"value": "1"
+								}
+							]
+						},
+						"description": "Elimina un registro de tiempo."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "6. Usuarios (API)",
+			"item": [
+				{
+					"name": "Listar Usuarios",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/usuarios",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"usuarios"
+							]
+						},
+						"description": "Obtiene la lista simplificada de los perfiles de todos los usuarios registrados."
+					},
+					"response": []
+				},
+				{
+					"name": "Obtener Usuario por ID",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/usuarios/:id",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"usuarios",
+								":id"
+							],
+							"variable": [
+								{
+									"key": "id",
+									"value": "1"
+								}
+							]
+						},
+						"description": "Obtiene el perfil simplificado de un usuario por su ID."
+					},
+					"response": []
+				},
+				{
+					"name": "Crear Usuario",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"Nombre\": \"Pedro Diaz\",\n  \"Correo\": \"pedro@example.com\",\n  \"Contrasenia\": \"Pass123!\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/usuarios",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"usuarios"
+							]
+						},
+						"description": "Registra un usuario y devuelve su perfil creado."
+					},
+					"response": []
+				},
+				{
+					"name": "Actualizar Perfil de Usuario",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"Nombre\": \"Pedro Diaz Modificado\",\n  \"Correo\": \"pedro_new@example.com\",\n  \"Contrasenia\": \"NewPass123!\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/usuarios/:id",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"usuarios",
+								":id"
+							],
+							"variable": [
+								{
+									"key": "id",
+									"value": "1"
+								}
+							]
+						},
+						"description": "Actualiza el nombre, correo y opcionalmente la contraseña del usuario indicado."
+					},
+					"response": []
+				},
+				{
+					"name": "Eliminar Usuario",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/usuarios/:id",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"usuarios",
+								":id"
+							],
+							"variable": [
+								{
+									"key": "id",
+									"value": "1"
+								}
+							]
+						},
+						"description": "Elimina a un usuario de la base de datos."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "7. Usuarios (Dimensión)",
+			"item": [
+				{
+					"name": "Listar Usuarios (Dimensión)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/usuarios-dimension",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"usuarios-dimension"
+							]
+						},
+						"description": "Obtiene la lista de todos los usuarios de la dimensión."
+					},
+					"response": []
+				},
+				{
+					"name": "Obtener Usuario por ID (Dimensión)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/usuarios-dimension/:sk_usuario_id",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"usuarios-dimension",
+								":sk_usuario_id"
+							],
+							"variable": [
+								{
+									"key": "sk_usuario_id",
+									"value": "1"
+								}
+							]
+						},
+						"description": "Obtiene el perfil del usuario de la dimensión por su ID."
+					},
+					"response": []
+				},
+				{
+					"name": "Crear Usuario (Dimensión)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"nombre_usuario\": \"Jose Luis\",\n  \"email_usuario\": \"joseluis@example.com\",\n  \"contrasenia\": \"password_secreto_hash\",\n  \"nombre_arduino\": \"ESP32_Jose\",\n  \"mac_address_usuario\": \"AA:BB:CC:11:22:33\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/usuarios-dimension",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"usuarios-dimension"
+							]
+						},
+						"description": "Registra un usuario directamente utilizando el modelo completo de entidad."
+					},
+					"response": []
+				},
+				{
+					"name": "Actualizar Usuario (Dimensión)",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"sk_usuario_id\": 1,\n  \"nombre_usuario\": \"Jose Luis Modificado\",\n  \"email_usuario\": \"joseluis@example.com\",\n  \"contrasenia\": \"password_secreto_hash\",\n  \"nombre_arduino\": \"ESP32_Jose_Mod\",\n  \"mac_address_usuario\": \"AA:BB:CC:11:22:34\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/usuarios-dimension/:sk_usuario_id",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"usuarios-dimension",
+								":sk_usuario_id"
+							],
+							"variable": [
+								{
+									"key": "sk_usuario_id",
+									"value": "1"
+								}
+							]
+						},
+						"description": "Modifica un usuario de la dimensión pasando la entidad completa."
+					},
+					"response": []
+				},
+				{
+					"name": "Eliminar Usuario (Dimensión)",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/usuarios-dimension/:sk_usuario_id",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"usuarios-dimension",
+								":sk_usuario_id"
+							],
+							"variable": [
+								{
+									"key": "sk_usuario_id",
+									"value": "1"
+								}
+							]
+						},
+						"description": "Elimina un usuario de la dimensión por su ID."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "8. WebSockets & ESP32 Direct Control",
+			"item": [
+				{
+					"name": "Enviar Comando Directo por HTTP",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/ws/accion?comando=LIGHT_TOGGLE&deviceKey=dev_key_foco_sala",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"ws",
+								"accion"
+							],
+							"query": [
+								{
+									"key": "comando",
+									"value": "LIGHT_TOGGLE",
+									"description": "El comando de texto a enviar al socket de la ESP32"
+								},
+								{
+									"key": "deviceKey",
+									"value": "dev_key_foco_sala",
+									"description": "El deviceKey que identifica la conexión WebSocket activa"
+								}
+							]
+						},
+						"description": "Envía un comando de texto directamente a un socket WebSocket activo asociado a ese `deviceKey`. Nota: No requiere token de autenticación Bearer ya que no empieza con `/api`."
+					},
+					"response": []
+				},
+				{
+					"name": "Conexión WebSocket (Postman WebSocket Request)",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "ws://localhost:5295/ws?deviceKey=dev_key_foco_sala",
+							"protocol": "ws",
+							"host": [
+								"localhost"
+							],
+							"port": "5295",
+							"path": [
+								"ws"
+							],
+							"query": [
+								{
+									"key": "deviceKey",
+									"value": "dev_key_foco_sala",
+									"description": "Clave única del dispositivo para registrar la conexión"
+								},
+								{
+									"key": "targetDeviceKey",
+									"value": "dev_key_objetivo",
+									"disabled": true,
+									"description": "Opcional: Clave del dispositivo receptor para enrutar mensajes directamente"
+								}
+							]
+						},
+						"description": "Usa la funcionalidad de WebSocket Request en Postman (no una petición HTTP regular) para conectarte a la ruta `ws://localhost:5295/ws` y mantener la conexión bidireccional."
+					},
+					"response": []
+				}
+			]
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://localhost:5295",
+			"type": "string"
+		},
+		{
+			"key": "token",
+			"value": "",
+			"type": "string"
+		}
+	],
+	"auth": {
+		"type": "bearer",
+		"bearer": [
+			{
+				"key": "token",
+				"value": "{{token}}",
+				"type": "string"
+			}
+		]
+	}
+}

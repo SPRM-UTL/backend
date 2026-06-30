@@ -1,0 +1,172 @@
+# Guía Completa de Endpoints para Postman - SPRM Backend
+
+Esta guía contiene TODOS los llamados disponibles en la API, organizados por categoría.
+
+## Configuración Global en Postman
+- **Base URL**: `http://localhost:5258`
+- **Headers Comunes**: `Content-Type: application/json`
+- **Autenticación**: Para los que requieren Token, ve a la pestaña **Authorization**, selecciona **Type: Bearer Token** y pega el token.
+
+---
+
+## 1. Autenticación (Auth) - [SIN TOKEN]
+
+### Registrar Usuario
+- **POST** `/api/Auth/register`
+- **Body**: `{"Nombre": "Juan", "Correo": "juan@mail.com", "Contrasenia": "123"}`
+
+### Login
+- **POST** `/api/Auth/login`
+- **Body**: `{"Correo": "juan@mail.com", "Contrasenia": "123"}`
+- *Nota: Copia el Token de la respuesta.*
+
+### Logout
+- **POST** `/api/Auth/logout`
+- *Requiere Token*
+
+---
+
+## 2. Aparatos (Dispositivos) - [CON TOKEN]
+
+### Listar todos
+- **GET** `/api/aparatos`
+
+### Obtener uno
+- **GET** `/api/aparatos/{id}`
+
+### Registrar nuevo
+- **POST** `/api/aparatos`
+- **Body**:
+  ```json
+  {
+    "nombre_aparato": "Ventilador Cuarto",
+    "tipo_aparato": "Ventilador",
+    "icono": "wind",
+    "accion_nombre": "Encender",
+    "comando_bluetooth": "FAN_ON",
+    "mac_bluetooth": "AA:BB:CC:11:22:33",
+    "nombre_bluetooth": "ESP32-Vent"
+  }
+  ```
+
+### Actualizar
+- **PUT** `/api/aparatos/{id}`
+- **Body**: (Mismo que POST, incluyendo `"sk_aparato_id": {id}`)
+
+### Eliminar
+- **DELETE** `/api/aparatos/{id}`
+
+### Ver Resumen de Control (Luces, Bocinas, etc)
+- **GET** `/api/aparatos/control`
+
+---
+
+## 3. Configuración de Red (ESP32) - [CON TOKEN]
+
+### Obtener Configuración
+- **GET** `/api/aparatos/{id}/configuracion-red`
+
+### Crear o Actualizar Configuración
+- **PUT** `/api/aparatos/{id}/configuracion-red`
+- **Body**:
+  ```json
+  {
+    "device_key": "mi-esp32-secreto",
+    "ip_address": "192.168.1.50",
+    "mac_address": "00:11:22:33:44:55",
+    "host_name": "ESP32-SALA",
+    "puerto_socket": 81,
+    "activo": true
+  }
+  ```
+
+---
+
+## 4. Control entre Aparatos (Vínculos) - [CON TOKEN]
+
+### Listar controles de un aparato
+- **GET** `/api/aparatos/{id_controlador}/controles`
+
+### Vincular dos aparatos (Ej: Un sensor controla una luz)
+- **POST** `/api/aparatos/{id_controlador}/controles`
+- **Body**:
+  ```json
+  {
+    "sk_aparato_controlado_id": 10,
+    "comando_socket": "TOGGLE",
+    "activo": true
+  }
+  ```
+
+### Eliminar vínculo
+- **DELETE** `/api/aparatos/{id_controlador}/controles/{id_controlado}`
+
+---
+
+## 5. Gestos - [CON TOKEN]
+
+### Listar Gestos
+- **GET** `/api/gestos`
+
+### Registrar Gesto
+- **POST** `/api/gestos`
+- **Body**:
+  ```json
+  {
+    "nombre_gesto": "Abrir Puño",
+    "bk_gesto_id": 4,
+    "icono": "hand-open",
+    "identificador_ia": 4,
+    "nivel_confianza_minimo": 0.90,
+    "tipo_disparador_nombre": "Unico",
+    "sk_aparato_id": 5
+  }
+  ```
+- *Gestos permitidos: Manos Arriba, Una Mano Arriba, Agitar la Mano, Abrir Puño, Cerrar Puño.*
+
+### Actualizar/Eliminar
+- **PUT** `/api/gestos/{id}`
+- **DELETE** `/api/gestos/{id}`
+
+---
+
+## 6. Historial de Actividad - [CON TOKEN]
+
+### Ver todo el historial (Formateado)
+- **GET** `/api/historial-actividad`
+
+### Detalle de un registro
+- **GET** `/api/historial-actividad/{id}`
+
+### Borrar registro
+- **DELETE** `/api/historial-actividad/{id}`
+
+---
+
+## 7. Usuarios y Perfil - [CON TOKEN]
+
+### Listar usuarios
+- **GET** `/api/usuarios`
+
+### Obtener mi perfil
+- **GET** `/api/usuarios/{id}`
+
+### Actualizar perfil
+- **PUT** `/api/usuarios/{id}`
+- **Body**: `{"Nombre": "Nuevo Nombre", "Correo": "nuevo@mail.com", "Contrasenia": "nueva123"}`
+
+---
+
+## 8. Otros y Especiales
+
+### Tipos de Aparatos
+- **GET** `/api/AparatoTipos`
+
+### Dimension Tiempo
+- **GET** `/api/tiempo`
+
+### WebSocket (Simulación ESP32)
+- **WS** `ws://localhost:5258/ws?deviceKey=mi-esp32-secreto`
+
+### Enviar Acción Directa (Manual)
+- **GET** `/ws/accion?deviceKey=mi-esp32-secreto&comando=ENCENDER`

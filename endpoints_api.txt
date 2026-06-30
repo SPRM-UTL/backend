@@ -1,0 +1,62 @@
+# Lista de Endpoints de la API - SPRM Backend
+
+## Autenticación (Auth)
+Base: /api/Auth
+- POST /api/Auth/register : Registrar un nuevo usuario.
+- POST /api/Auth/login    : Iniciar sesión y obtener token.
+- POST /api/Auth/logout   : Cerrar sesión (inactivar token).
+
+## Aparatos (Dispositivos)
+Rutas: /api/Dim_Aparatos, /api/aparatos
+- GET    /                                      : Listar aparatos del usuario actual.
+- GET    /{sk_aparato_id}                       : Obtener detalle de un aparato específico.
+- POST   /                                      : Registrar un nuevo aparato.
+- PUT    /{sk_aparato_id}                       : Actualizar datos de un aparato.
+- DELETE /{sk_aparato_id}                       : Eliminar un aparato.
+- GET    /{sk_aparato_id}/configuracion-red     : Obtener la configuración de red (deviceKey, IP, etc.) de un aparato.
+- PUT    /{sk_aparato_id}/configuracion-red     : Actualizar o crear la configuración de red de un aparato.
+- GET    /{sk_aparato_controlador_id}/controles : Listar otros aparatos que este aparato puede controlar.
+- POST   /{sk_aparato_controlador_id}/controles : Crear un vínculo de control entre dos aparatos.
+- DELETE /{sk_aparato_controlador_id}/controles/{sk_aparato_controlado_id} : Eliminar un vínculo de control.
+- GET    /control                               : Obtener resumen de aparatos agrupados por tipo (Luces, Bocinas, Ventiladores).
+
+## Gestos
+Rutas: /api/Dim_Gestos, /api/gestos
+- GET    /               : Listar gestos configurados por el usuario.
+- GET    /{sk_gesto_id}  : Obtener detalle de un gesto.
+- POST   /               : Registrar un nuevo gesto (vínculo entre IA y Aparato).
+- PUT    /{sk_gesto_id}  : Actualizar configuración de un gesto.
+- DELETE /{sk_gesto_id}  : Eliminar un gesto.
+
+## Historial de Actividad
+Rutas: /api/Fact_Historico_Actividad, /api/historial-actividad
+- GET    /                  : Listar todo el historial de actividad (formateado para la UI).
+- GET    /{sk_actividad_id} : Obtener detalle de un registro de actividad.
+- POST   /                  : Crear un nuevo registro en el historial.
+- PUT    /{sk_actividad_id} : Actualizar un registro de actividad.
+- DELETE /{sk_actividad_id} : Eliminar un registro de actividad.
+
+## Usuarios (Perfil)
+Rutas: /api/UsuariosApi, /api/usuarios
+- GET    /     : Listar todos los usuarios registrados.
+- GET    /{id} : Obtener información de perfil de un usuario.
+- POST   /     : Crear un usuario (alternativa al registro).
+- PUT    /{id} : Actualizar información del perfil.
+- DELETE /{id} : Eliminar un usuario.
+
+## Tipos de Aparato
+Ruta: /api/AparatoTipos
+- GET / : Listar los tipos de aparatos soportados (Focos, TV, Bocinas, etc.).
+
+## Tiempo (Dimensión Temporal)
+Rutas: /api/Dim_Tiempo, /api/tiempo
+- GET    /               : Listar registros de la dimensión tiempo.
+- GET    /{sk_tiempo_id} : Obtener un registro de tiempo específico.
+- POST   /               : Crear registro de tiempo.
+- PUT    /{sk_tiempo_id} : Actualizar registro de tiempo.
+- DELETE /{sk_tiempo_id} : Eliminar registro de tiempo.
+
+## WebSocket y Comandos ESP32
+Base: /ws
+- GET /       : Conexión WebSocket para dispositivos ESP32 (requiere deviceKey en query).
+- GET /accion : Enviar un comando de texto a un ESP32 conectado (query params: comando, deviceKey).

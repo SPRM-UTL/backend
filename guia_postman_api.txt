@@ -1,0 +1,132 @@
+# Guía de Uso de la API en Postman - SPRM Backend
+
+## Información General
+- **Base URL**: `http://localhost:5258` (o la URL donde se ejecute tu backend)
+- **Autenticación**: La mayoría de los endpoints requieren un Token.
+  - Para obtenerlo: Inicia sesión con `/api/Auth/login`.
+  - Para usarlo: En Postman, ve a la pestaña **Authorization**, selecciona **Bearer Token** y pega el token obtenido.
+- **Formato de Respuesta**: El middleware encapsula todas las respuestas en este formato:
+  ```json
+  {
+    "success": true,
+    "status": 200,
+    "data": { ... }
+  }
+  ```
+
+---
+
+## 1. Autenticación (Auth) - NO requieren Token
+
+### Registrar Usuario
+- **POST** `/api/Auth/register`
+- **Body (JSON)**:
+  ```json
+  {
+    "Nombre": "Tu Nombre",
+    "Correo": "usuario@ejemplo.com",
+    "Contrasenia": "123456"
+  }
+  ```
+
+### Iniciar Sesión (Obtener Token)
+- **POST** `/api/Auth/login`
+- **Body (JSON)**:
+  ```json
+  {
+    "Correo": "usuario@ejemplo.com",
+    "Contrasenia": "123456"
+  }
+  ```
+- *Nota: Copia el valor de `data.Token` para usarlo en los siguientes llamados.*
+
+### Cerrar Sesión
+- **POST** `/api/Auth/logout`
+- **Header**: `Authorization: Bearer <tu_token>`
+
+---
+
+## 2. Aparatos (Dispositivos) - Requieren Token
+
+### Listar Aparatos del Usuario
+- **GET** `/api/aparatos`
+
+### Registrar Nuevo Aparato
+- **POST** `/api/aparatos`
+- **Body (JSON)**:
+  ```json
+  {
+    "nombre_aparato": "Foco Sala",
+    "tipo_aparato": "Focos",
+    "icono": "lightbulb",
+    "accion_nombre": "Encender",
+    "comando_bluetooth": "ON",
+    "mac_bluetooth": "00:1A:7D:DA:71:13",
+    "nombre_bluetooth": "ESP32-Luz"
+  }
+  ```
+
+### Actualizar Aparato
+- **PUT** `/api/aparatos/{id}`
+- **Body (JSON)**: Igual al POST, pero incluyendo `"sk_aparato_id": {id}`.
+
+### Configuración de Red (ESP32)
+- **GET** `/api/aparatos/{id}/configuracion-red`
+- **PUT** `/api/aparatos/{id}/configuracion-red`
+- **Body (JSON)**:
+  ```json
+  {
+    "device_key": "mi-secreto-esp32",
+    "ip_address": "192.168.1.15",
+    "mac_address": "AA:BB:CC:DD:EE:FF",
+    "host_name": "ESP32-Habitacion",
+    "puerto_socket": 81,
+    "activo": true
+  }
+  ```
+
+---
+
+## 3. Gestos - Requieren Token
+
+### Listar Gestos
+- **GET** `/api/gestos`
+
+### Registrar Gesto
+- **POST** `/api/gestos`
+- **Body (JSON)**:
+  ```json
+  {
+    "nombre_gesto": "Manos Arriba",
+    "bk_gesto_id": 1,
+    "icono": "gesture-up",
+    "identificador_ia": 101,
+    "nivel_confianza_minimo": 0.85,
+    "tipo_disparador_nombre": "Continuo",
+    "sk_aparato_id": 5
+  }
+  ```
+- *Nota: Nombres válidos: "Manos Arriba", "Una Mano Arriba", "Agitar la Mano", "Abrir Puño", "Cerrar Puño".*
+
+---
+
+## 4. Historial de Actividad - Requieren Token
+
+### Ver Historial (Formateado para UI)
+- **GET** `/api/historial-actividad`
+
+### Detalle de un Registro
+- **GET** `/api/historial-actividad/{id}`
+
+---
+
+## 5. Otros
+
+### Listar Tipos de Aparato
+- **GET** `/api/AparatoTipos`
+
+### WebSocket (Conexión ESP32)
+- **WS** `ws://localhost:5258/ws?deviceKey=mi-secreto-esp32`
+
+### Enviar Acción Manual al ESP32
+- **GET** `/ws/accion?deviceKey=mi-secreto-esp32&comando=ENCENDER`
