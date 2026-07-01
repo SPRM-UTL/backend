@@ -1,0 +1,54 @@
+===========================================================
+CONTEXTO DE INTEGRACIÓN: GESTOS, APARATOS Y CONTROL (SPRM)
+===========================================================
+
+1. INFORMACIÓN DEL USUARIO Y DISPOSITIVOS ACTUALES
+---------------------------------------------------
+- Usuario ID: 30002
+- Aparato Objetivo (Bocina): 150002 (Nombre: 1HORA-AUT114)
+- Aparato Controlador: 180002
+- Gesto de Prueba: 60003 (Abrir Puño)
+- Token actual: Jw6fd432PBnhHLb9OMDouGMYb0ecko
+
+2. HALLAZGOS IMPORTANTES (ERRORES Y SOLUCIONES)
+-----------------------------------------------
+A) Error de Visualización en Angular (Bocinas vs Bocina):
+   - Problema: El backend (AparatosController) filtra dispositivos usando el string EXACTO "Bocina".
+   - Estado: Tu dispositivo actual tiene el tipo "Bocinas" (en plural), por eso no aparece en el Dashboard de Angular.
+   - Solución: Actualizar el tipo del aparato a "Bocina" (singular) vía PUT a /api/aparatos/150002.
+
+B) Error 400 en Controles:
+   - Problema: El sistema no permite que un aparato se controle a sí mismo (ID controlador == ID controlado).
+   - Solución: Usar siempre dos IDs diferentes (ej. 180002 controla a 150002).
+
+C) Historial Vacío:
+   - Problema: El historial requiere que el 'sk_tiempo_id' enviado exista en la tabla 'tiempo'.
+   - Solución: Crear primero un registro en la tabla Tiempo (ej. ID 1) antes de enviar el historial.
+
+3. ENDPOINTS CLAVE PARA POSTMAN
+-------------------------------
+Base URL: https://backend-neao.onrender.com/api
+
+- TRAER PERFIL: GET /UsuariosDimension/perfil
+- LISTAR GESTOS: GET /gestos
+- LISTAR APARATOS: GET /aparatos
+- CREAR VÍNCULO DE CONTROL:
+  POST /Dim_Aparatos/{id_controlador}/controles
+  Body: { "sk_aparato_controlado_id": 150002, "comando_socket": "PLAY", "activo": true }
+
+- AGREGAR HISTORIAL:
+  POST /historial-actividad
+  Body: { "sk_usuario_id": 30002, "sk_gesto_id": 60003, "sk_aparato_id": 150002, "sk_tiempo_id": 1, "confianza_ia": 0.75, "tiempo_respuesta": 150, "ejecucion_exitosa": true }
+
+4. LÓGICA DE MULTIMEDIA
+-----------------------
+- No hay campos de URL/Link en los gestos.
+- La "Multimedia" se identifica por el tipo de aparato (Bocina, Audífonos, Televisión).
+- Para agregar soporte de links, se debe modificar 'GestoDto' y 'Gesto.cs' para incluir un campo string 'LinkMultimedia'.
+
+5. CONFIGURACIÓN DE ANGULAR (ControlService)
+--------------------------------------------
+- El servicio consume 'api/aparatos/control'.
+- Separa los dispositivos en tres signals: luces, bocinas, ventiladores.
+- Importante: El mapeo en el frontend espera que el objeto tenga 'nombre_aparato' y 'encendido'.
+===========================================================

@@ -10,9 +10,29 @@ public class GestosController : ControllerBase
 {
     private readonly PruebaaspContext _context;
     
-    // Lista de gestos permitidos
+    // Lista de gestos permitidos para que acepte los que me enviaron en la imagen
     private static readonly string[] GestosValidos = new[] { 
-        "Manos Arriba", "Una Mano Arriba", "Agitar la Mano", "Abrir Puño", "Cerrar Puño" 
+        "Manos Arriba",
+        "Una Mano Arriba",
+        "Agitar la Mano",
+        "Abrir Puño",
+        "Cerrar Puño",
+        "A PULGAR ARRIBA",
+        "A PULGAR ABAJO",
+        "B CUATRO",
+        "D UNO",
+        "F OK",
+        "I",
+        "L",
+        "U",
+        "V PAZ",
+        "W TRES",
+        "Y",
+        "PUÑO",
+        "CINCO MANO ABIERTA",
+        "ROCK",
+        "TE AMO ILY",
+        "DESCONOCIDO"
     };
 
     public GestosController(PruebaaspContext context)
@@ -187,6 +207,68 @@ public class GestosController : ControllerBase
         };
 
         return Ok(dto);
+    }
+
+    // POST: api/gestos/{sk_gesto_id}/detalle
+    // Es utilizada para la alimentación de los detalles de los gestos
+    [HttpPost("{sk_gesto_id}/detalle")]
+    public async Task<ActionResult<GestoDetalleDto>> PostGestoDetalle(int sk_gesto_id, GestoDetalleDto dto)
+    {
+        var usuarioId = (int?)HttpContext.Items["UsuarioId"];
+
+        var gesto = await _context.Gestos
+            .FirstOrDefaultAsync(g => g.sk_gesto_id == sk_gesto_id && g.sk_usuario_id == usuarioId);
+
+        if (gesto == null)
+        {
+            return NotFound("El gesto no existe o no tienes permiso para acceder a él.");
+        }
+
+        var detalle = await _context.GestoDetalles
+            .Include(d => d.MediosReferencia)
+            .FirstOrDefaultAsync(d => d.GestoId == sk_gesto_id);
+
+        if (detalle == null)
+        {
+            detalle = new GestoDetalle { GestoId = sk_gesto_id };
+            _context.GestoDetalles.Add(detalle);
+        }
+
+        detalle.DuracionSegundos = dto.DuracionSegundos;
+        detalle.IluminacionRecomendada = dto.IluminacionRecomendada;
+        detalle.DistanciaRecomendada = dto.DistanciaRecomendada;
+
+        if (detalle.MediosReferencia.Any())
+        {
+            _context.GestoMedias.RemoveRange(detalle.MediosReferencia);
+        }
+
+        detalle.MediosReferencia = dto.MediosReferencia.Select(m => new GestoMedia
+        {
+            UrlArchivo = m.UrlArchivo,
+            TipoMedia = m.TipoMedia,
+            Extension = m.Extension
+        }).ToList();
+
+        await _context.SaveChangesAsync();
+
+        // 5. Devolver la info completa para confirmar
+        return Ok(new GestoDetalleDto
+        {
+            SkGestoDetalleId = detalle.Id,
+            SkGestoId = detalle.GestoId,
+            NombreGesto = gesto.nombre_gesto,
+            DuracionSegundos = detalle.DuracionSegundos,
+            IluminacionRecomendada = detalle.IluminacionRecomendada,
+            DistanciaRecomendada = detalle.DistanciaRecomendada,
+            MediosReferencia = detalle.MediosReferencia.Select(m => new GestoMediaDto
+            {
+                SkMediaId = m.Id,
+                UrlArchivo = m.UrlArchivo,
+                TipoMedia = m.TipoMedia,
+                Extension = m.Extension
+            }).ToList()
+        });
     }
 
     private bool GestoExists(int? sk_gesto_id)
