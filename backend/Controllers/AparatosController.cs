@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using backend.Models;
 using backend.DTOs;
+using backend.Services;
 
 [Route("api/Dim_Aparatos")]
 [Route("api/aparatos")]
@@ -9,9 +10,12 @@ using backend.DTOs;
 public class AparatosController : ControllerBase
 {
     private readonly PruebaaspContext _context;
-    public AparatosController(PruebaaspContext context)
+    private readonly Esp32ConnectionManager _connections;
+
+    public AparatosController(PruebaaspContext context, Esp32ConnectionManager connections)
     {
         _context = context;
+        _connections = connections;
     }
 
     // GET: api/Dim_Aparatos
@@ -19,24 +23,17 @@ public class AparatosController : ControllerBase
     public async Task<ActionResult<IEnumerable<AparatoDto>>> GetAparatos()
     {
         var usuarioId = (int?)HttpContext.Items["UsuarioId"];
-        return await _context.Aparatos
+        var aparatos = await _context.Aparatos
+            .Include(a => a.Tipo)
+            .Include(a => a.Accion)
+            .Include(a => a.Bluetooth)
+            .Include(a => a.Habitacion)
+            .Include(a => a.ConfiguracionRed)
             .Where(a => a.sk_usuario_id == usuarioId)
             .OrderBy(a => a.nombre_aparato)
-            .Select(a => new AparatoDto
-            {
-                SkAparatoId = a.sk_aparato_id,
-                NombreAparato = a.nombre_aparato,
-                TipoAparato = a.Tipo == null ? null : a.Tipo.nombre_tipo,
-                AccionNombre = a.Accion == null ? null : a.Accion.accion_nombre,
-                ComandoBluetooth = a.Accion == null ? null : a.Accion.comando_bluetooth,
-                Icono = a.icono,
-                MacBluetooth = a.Bluetooth == null ? null : a.Bluetooth.mac_bluetooth,
-                NombreBluetooth = a.Bluetooth == null ? null : a.Bluetooth.nombre_bluetooth,
-                FechaSincronizacion = a.fecha_sincronizacion,
-                SkHabitacionId = a.sk_habitacion_id,
-                NombreHabitacion = a.Habitacion == null ? null : a.Habitacion.nombre_habitacion
-            })
             .ToListAsync();
+
+        return aparatos.Select(MapAparatoDto).ToList();
     }
 
     // GET: api/Dim_Aparatos/5
@@ -45,29 +42,55 @@ public class AparatosController : ControllerBase
     {
         var usuarioId = (int?)HttpContext.Items["UsuarioId"];
         var aparato = await _context.Aparatos
-            .Where(a => a.sk_aparato_id == sk_aparato_id && a.sk_usuario_id == usuarioId)
-            .Select(a => new AparatoDto
-            {
-                SkAparatoId = a.sk_aparato_id,
-                NombreAparato = a.nombre_aparato,
-                TipoAparato = a.Tipo == null ? null : a.Tipo.nombre_tipo,
-                AccionNombre = a.Accion == null ? null : a.Accion.accion_nombre,
-                ComandoBluetooth = a.Accion == null ? null : a.Accion.comando_bluetooth,
-                Icono = a.icono,
-                MacBluetooth = a.Bluetooth == null ? null : a.Bluetooth.mac_bluetooth,
-                NombreBluetooth = a.Bluetooth == null ? null : a.Bluetooth.nombre_bluetooth,
-                FechaSincronizacion = a.fecha_sincronizacion,
-                SkHabitacionId = a.sk_habitacion_id,
-                NombreHabitacion = a.Habitacion == null ? null : a.Habitacion.nombre_habitacion
-            })
-            .FirstOrDefaultAsync();
+            .Include(a => a.Tipo)
+            .Include(a => a.Accion)
+            .Include(a => a.Bluetooth)
+            .Include(a => a.Habitacion)
+            .Include(a => a.ConfiguracionRed)
+            .FirstOrDefaultAsync(a => a.sk_aparato_id == sk_aparato_id && a.sk_usuario_id == usuarioId);
 
         if (aparato == null)
         {
             return NotFound();
         }
 
-        return aparato;
+        return MapAparatoDto(aparato);
+    }
+
+    [HttpGet("{sk_aparato_id}/mensajes")]
+    public async Task<ActionResult<IEnumerable<AparatoMensajeDto>>> GetMensajesSocket(
+        int sk_aparato_id,
+        [FromQuery] int limit = 50)
+    {
+        var usuarioId = (int?)HttpContext.Items["UsuarioId"];
+        var aparato = await _context.Aparatos
+            .Include(a => a.ConfiguracionRed)
+            .FirstOrDefaultAsync(a => a.sk_aparato_id == sk_aparato_id && a.sk_usuario_id == usuarioId);
+
+        if (aparato?.ConfiguracionRed == null)
+        {
+            return NotFound("El aparato no tiene configuración de red.");
+        }
+
+        limit = Math.Clamp(limit, 1, 200);
+
+        var mensajes = await _context.AparatoMensajes
+            .Where(m => m.sk_aparato_configuracion_red_id == aparato.ConfiguracionRed.sk_aparato_configuracion_red_id)
+            .OrderByDescending(m => m.fecha_creacion)
+            .Take(limit)
+            .Select(m => new AparatoMensajeDto
+            {
+                SkMensajeId = m.sk_mensaje_id,
+                SkAparatoId = sk_aparato_id,
+                Direccion = m.direccion,
+                PayloadJson = m.payload_json,
+                Comando = m.comando,
+                Procesado = m.procesado,
+                FechaCreacion = m.fecha_creacion
+            })
+            .ToListAsync();
+
+        return mensajes;
     }
 
     // PUT: api/Dim_Aparatos/5
@@ -385,6 +408,31 @@ public class AparatosController : ControllerBase
         return string.IsNullOrWhiteSpace(value) ? null : value;
     }
 
+    private AparatoDto MapAparatoDto(Aparato a)
+    {
+        var deviceKey = a.ConfiguracionRed?.device_key;
+        var conectado = !string.IsNullOrWhiteSpace(deviceKey) &&
+                        _connections.TryGetOpenSocket(deviceKey, out _);
+
+        return new AparatoDto
+        {
+            SkAparatoId = a.sk_aparato_id,
+            NombreAparato = a.nombre_aparato,
+            TipoAparato = a.Tipo?.nombre_tipo,
+            AccionNombre = a.Accion?.accion_nombre,
+            ComandoBluetooth = a.Accion?.comando_bluetooth,
+            Icono = a.icono,
+            MacBluetooth = a.Bluetooth?.mac_bluetooth,
+            NombreBluetooth = a.Bluetooth?.nombre_bluetooth,
+            FechaSincronizacion = a.fecha_sincronizacion,
+            SkHabitacionId = a.sk_habitacion_id,
+            NombreHabitacion = a.Habitacion?.nombre_habitacion,
+            EstadoEncendido = a.ConfiguracionRed?.estado_encendido,
+            FechaEstadoActualizado = a.ConfiguracionRed?.fecha_estado_actualizado,
+            ConectadoRed = conectado
+        };
+    }
+
     private static AparatoConfiguracionRedDto ToDto(AparatoConfiguracionRed configuracion) => new()
     {
         SkAparatoConfiguracionRedId = configuracion.sk_aparato_configuracion_red_id,
@@ -398,7 +446,10 @@ public class AparatosController : ControllerBase
         RutaSocket = configuracion.ruta_socket,
         Activo = configuracion.activo,
         FechaCreacion = configuracion.fecha_creacion,
-        FechaUltimaConexion = configuracion.fecha_ultima_conexion
+        FechaUltimaConexion = configuracion.fecha_ultima_conexion,
+        EstadoEncendido = configuracion.estado_encendido,
+        FechaEstadoActualizado = configuracion.fecha_estado_actualizado,
+        OrigenEstado = configuracion.origen_estado
     };
 
     private static void ApplyDto(AparatoConfiguracionRed configuracion, AparatoConfiguracionRedDto dto)

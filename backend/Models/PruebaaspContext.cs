@@ -23,6 +23,7 @@ public partial class PruebaaspContext : DbContext
     public virtual DbSet<AparatoAccion> AparatoAcciones { get; set; }
     public virtual DbSet<AparatoBluetooth> AparatoBluetooth { get; set; }
     public virtual DbSet<AparatoConfiguracionRed> AparatoConfiguracionesRed { get; set; }
+    public virtual DbSet<AparatoMensaje> AparatoMensajes { get; set; }
     public virtual DbSet<AparatoControl> AparatoControles { get; set; }
     public virtual DbSet<Tiempo> Tiempos { get; set; }
     public virtual DbSet<HistorialActividad> HistorialActividades { get; set; }
@@ -154,12 +155,36 @@ public partial class PruebaaspContext : DbContext
             entity.Property(e => e.activo).HasColumnName("activo");
             entity.Property(e => e.fecha_creacion).HasColumnName("fecha_creacion");
             entity.Property(e => e.fecha_ultima_conexion).HasColumnName("fecha_ultima_conexion");
+            entity.Property(e => e.estado_encendido).HasColumnName("estado_encendido");
+            entity.Property(e => e.fecha_estado_actualizado).HasColumnName("fecha_estado_actualizado");
+            entity.Property(e => e.origen_estado).HasMaxLength(20).HasColumnName("origen_estado");
 
             entity.HasIndex(e => e.sk_aparato_id).IsUnique();
             entity.HasIndex(e => e.device_key).IsUnique(false);
             entity.HasOne(e => e.Aparato)
                 .WithOne(e => e.ConfiguracionRed)
                 .HasForeignKey<AparatoConfiguracionRed>(e => e.sk_aparato_id)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<AparatoMensaje>(entity =>
+        {
+            entity.HasKey(e => e.sk_mensaje_id);
+            entity.ToTable("aparato_mensaje");
+
+            entity.Property(e => e.sk_mensaje_id).HasColumnName("sk_mensaje_id");
+            entity.Property(e => e.sk_aparato_configuracion_red_id).HasColumnName("sk_aparato_configuracion_red_id");
+            entity.Property(e => e.direccion).HasMaxLength(10).HasColumnName("direccion");
+            entity.Property(e => e.payload_json).HasColumnType("longtext").HasColumnName("payload_json");
+            entity.Property(e => e.comando).HasMaxLength(100).HasColumnName("comando");
+            entity.Property(e => e.procesado).HasColumnName("procesado");
+            entity.Property(e => e.error_procesamiento).HasMaxLength(500).HasColumnName("error_procesamiento");
+            entity.Property(e => e.fecha_creacion).HasColumnName("fecha_creacion");
+
+            entity.HasIndex(e => e.sk_aparato_configuracion_red_id);
+            entity.HasOne(e => e.ConfiguracionRed)
+                .WithMany(e => e.Mensajes)
+                .HasForeignKey(e => e.sk_aparato_configuracion_red_id)
                 .OnDelete(DeleteBehavior.Cascade);
         });
 

@@ -37,6 +37,16 @@ namespace backend.Models
 
         public DateTime? fecha_ultima_conexion { get; set; }
 
+        public bool? estado_encendido { get; set; }
+
+        public DateTime? fecha_estado_actualizado { get; set; }
+
+        [MaxLength(20)]
+        public string? origen_estado { get; set; }
+
+        [JsonIgnore]
+        public List<AparatoMensaje>? Mensajes { get; set; }
+
         [ForeignKey(nameof(sk_aparato_id))]
         [JsonIgnore]
         public Aparato? Aparato { get; set; }

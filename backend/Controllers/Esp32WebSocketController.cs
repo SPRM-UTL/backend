@@ -1,8 +1,9 @@
-using backend.Services;
 using backend.Models;
+using backend.Services;
 using Microsoft.AspNetCore.Mvc;
 using System.Net.WebSockets;
 using System.Text;
+using Microsoft.EntityFrameworkCore;
 
 namespace backend.Controllers
 {
@@ -11,15 +12,18 @@ namespace backend.Controllers
     {
         private readonly Esp32ConnectionManager _connections;
         private readonly Esp32MessageRouter _router;
+        private readonly Esp32DeviceStateService _stateService;
         private readonly ILogger<Esp32WebSocketController> _logger;
 
         public Esp32WebSocketController(
             Esp32ConnectionManager connections,
             Esp32MessageRouter router,
+            Esp32DeviceStateService stateService,
             ILogger<Esp32WebSocketController> logger)
         {
             _connections = connections;
             _router = router;
+            _stateService = stateService;
             _logger = logger;
         }
 
@@ -41,7 +45,6 @@ namespace backend.Controllers
             }
 
             var normalizedDeviceKey = deviceKey.Trim();
-            Console.WriteLine("DeviceKey: " + normalizedDeviceKey);
             using var socket = await HttpContext.WebSockets.AcceptWebSocketAsync();
 
             var sourceDevice = await _router.RegisterOrUpdateDeviceAsync(normalizedDeviceKey, token, cancellationToken);
@@ -49,11 +52,9 @@ namespace backend.Controllers
             if (sourceDevice == null)
             {
                 await socket.CloseAsync(
-                    System.Net.WebSockets.WebSocketCloseStatus.PolicyViolation,
+                    WebSocketCloseStatus.PolicyViolation,
                     "deviceKey no registrado en configuracion de red",
                     cancellationToken);
-
-                Console.WriteLine("No se encontro el device");
 
                 return BadRequest("El deviceKey no esta registrado en la configuracion de red de un aparato activo.");
             }
@@ -81,9 +82,10 @@ namespace backend.Controllers
 
         [HttpGet("accion")]
         public async Task<IActionResult> EnviarComando(
-        [FromQuery] string comando,
-        [FromQuery] string deviceKey,
-        CancellationToken cancellationToken)
+            [FromQuery] string comando,
+            [FromQuery] string deviceKey,
+            [FromServices] PruebaaspContext context,
+            CancellationToken cancellationToken)
         {
             if (!_connections.TryGetOpenSocket(deviceKey, out var socket))
             {
@@ -96,15 +98,32 @@ namespace backend.Controllers
                 true,
                 cancellationToken);
 
+            var config = await context.AparatoConfiguracionesRed
+                .FirstOrDefaultAsync(c => c.device_key == deviceKey, cancellationToken);
+
+            if (config is not null)
+            {
+                var estado = _stateService.TryParsePowerState(comando);
+                await _stateService.ProcessOutboundCommandAsync(
+                    config.sk_aparato_configuracion_red_id,
+                    comando,
+                    estado,
+                    "accion",
+                    cancellationToken);
+            }
+
             return Ok(new
             {
                 deviceKey,
-                comando
+                comando,
+                estado_encendido = _stateService.TryParsePowerState(comando)
             });
         }
 
         [HttpGet("status/{deviceKey}")]
-        public IActionResult GetStatus(string deviceKey)
+        public async Task<IActionResult> GetStatus(
+            string deviceKey,
+            [FromServices] PruebaaspContext context)
         {
             if (string.IsNullOrWhiteSpace(deviceKey))
             {
@@ -112,8 +131,16 @@ namespace backend.Controllers
             }
 
             bool isConnected = _connections.TryGetOpenSocket(deviceKey, out _);
+            var config = await context.AparatoConfiguracionesRed
+                .FirstOrDefaultAsync(c => c.device_key == deviceKey);
 
-            return Ok(new { connected = isConnected });
+            return Ok(new
+            {
+                connected = isConnected,
+                estado_encendido = config?.estado_encendido,
+                fecha_estado_actualizado = config?.fecha_estado_actualizado,
+                origen_estado = config?.origen_estado
+            });
         }
 
         [HttpGet("status/all")]
@@ -121,6 +148,32 @@ namespace backend.Controllers
         {
             var connectedDevices = _connections.GetAllConnectedDeviceKeys();
             return Ok(new { connectedDevices });
+        }
+
+        [HttpGet("state/{sk_aparato_id}")]
+        public async Task<IActionResult> GetAparatoState(
+            int sk_aparato_id,
+            [FromServices] PruebaaspContext context)
+        {
+            var config = await context.AparatoConfiguracionesRed
+                .FirstOrDefaultAsync(c => c.sk_aparato_id == sk_aparato_id);
+
+            if (config == null || string.IsNullOrWhiteSpace(config.device_key))
+            {
+                return NotFound("El aparato no tiene configuración de red.");
+            }
+
+            var conectado = _connections.TryGetOpenSocket(config.device_key, out _);
+
+            return Ok(new
+            {
+                sk_aparato_id,
+                device_key = config.device_key,
+                estado_encendido = config.estado_encendido,
+                conectado,
+                fecha_estado_actualizado = config.fecha_estado_actualizado,
+                origen_estado = config.origen_estado
+            });
         }
 
         [HttpPost("toggle/{sk_aparato_id}")]
@@ -148,7 +201,20 @@ namespace backend.Controllers
                 true,
                 cancellationToken);
 
-            return Ok(new { success = true, comando });
+            await _stateService.ProcessOutboundCommandAsync(
+                config.sk_aparato_configuracion_red_id,
+                comando,
+                estado,
+                "toggle",
+                cancellationToken);
+
+            return Ok(new
+            {
+                success = true,
+                comando,
+                estado_encendido = estado,
+                fecha_estado_actualizado = DateTime.UtcNow
+            });
         }
     }
 }
