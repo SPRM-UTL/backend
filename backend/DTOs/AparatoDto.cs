@@ -36,5 +36,14 @@ namespace backend.DTOs
 
         [JsonPropertyName("nombre_habitacion")]
         public string? NombreHabitacion { get; set; }
+
+        [JsonPropertyName("estado_encendido")]
+        public bool? EstadoEncendido { get; set; }
+
+        [JsonPropertyName("conectado_red")]
+        public bool? ConectadoRed { get; set; }
+
+        [JsonPropertyName("fecha_estado_actualizado")]
+        public DateTime? FechaEstadoActualizado { get; set; }
     }
 }

@@ -9,15 +9,18 @@ namespace backend.Services
     {
         private readonly IServiceScopeFactory _scopeFactory;
         private readonly Esp32ConnectionManager _connections;
+        private readonly Esp32DeviceStateService _stateService;
         private readonly ILogger<Esp32MessageRouter> _logger;
 
         public Esp32MessageRouter(
             IServiceScopeFactory scopeFactory,
             Esp32ConnectionManager connections,
+            Esp32DeviceStateService stateService,
             ILogger<Esp32MessageRouter> logger)
         {
             _scopeFactory = scopeFactory;
             _connections = connections;
+            _stateService = stateService;
             _logger = logger;
         }
 
@@ -145,6 +148,11 @@ namespace backend.Services
             await using var scope = _scopeFactory.CreateAsyncScope();
             var db = scope.ServiceProvider.GetRequiredService<PruebaaspContext>();
 
+            await _stateService.ProcessInboundMessageAsync(
+                sourceConfiguracionRedId,
+                message,
+                cancellationToken);
+
             WebSocket? targetSocket = null;
             AparatoConfiguracionRed? targetConfiguracion = null;
 
@@ -163,14 +171,14 @@ namespace backend.Services
             {
                 if (targetSocket is null)
                 {
-                    var reason = string.IsNullOrWhiteSpace(targetDeviceKey)
-                        ? "sin aparato destino configurado"
-                        : $"{targetDeviceKey.Trim()} no esta conectado";
-
-                    _logger.LogInformation(
-                        "Comando de aparato {SourceConfiguracionRedId} recibido, {Reason}.",
-                        sourceConfiguracionRedId,
-                        reason);
+                    if (!string.IsNullOrWhiteSpace(targetDeviceKey))
+                    {
+                        var reason = $"{targetDeviceKey.Trim()} no esta conectado";
+                        _logger.LogInformation(
+                            "Mensaje de aparato {SourceConfiguracionRedId} recibido, {Reason}.",
+                            sourceConfiguracionRedId,
+                            reason);
+                    }
                 }
                 else
                 {

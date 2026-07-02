@@ -39,5 +39,14 @@ namespace backend.DTOs
 
         [JsonPropertyName("fecha_ultima_conexion")]
         public DateTime? FechaUltimaConexion { get; set; }
+
+        [JsonPropertyName("estado_encendido")]
+        public bool? EstadoEncendido { get; set; }
+
+        [JsonPropertyName("fecha_estado_actualizado")]
+        public DateTime? FechaEstadoActualizado { get; set; }
+
+        [JsonPropertyName("origen_estado")]
+        public string? OrigenEstado { get; set; }
     }
 }
