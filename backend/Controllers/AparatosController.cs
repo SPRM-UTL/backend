@@ -161,10 +161,20 @@ public class AparatosController : ControllerBase
             return NotFound();
         }
 
-        _context.Aparatos.Remove(aparato);
-        await _context.SaveChangesAsync();
-
-        return Ok();
+        try
+        {
+            _context.Aparatos.Remove(aparato);
+            await _context.SaveChangesAsync();
+            return Ok(new { mensaje = "Dispositivo eliminado exitosamente" });
+        }
+        catch (DbUpdateException ex)
+        {
+            return BadRequest(new { mensaje = "No se puede eliminar el dispositivo porque está siendo utilizado (ej. como controlador o controlado)." });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { mensaje = "Error interno del servidor al eliminar el dispositivo." });
+        }
     }
 
     [HttpGet("{sk_aparato_id}/configuracion-red")]
@@ -302,10 +312,16 @@ public class AparatosController : ControllerBase
             return NotFound();
         }
 
-        _context.AparatoControles.Remove(control);
-        await _context.SaveChangesAsync();
-
-        return Ok();
+        try
+        {
+            _context.AparatoControles.Remove(control);
+            await _context.SaveChangesAsync();
+            return Ok(new { mensaje = "Control eliminado exitosamente" });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { mensaje = "Error interno del servidor al eliminar el control." });
+        }
     }
 
     private bool AparatoExists(int? sk_aparato_id)
