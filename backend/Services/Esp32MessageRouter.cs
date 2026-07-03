@@ -28,6 +28,7 @@ namespace backend.Services
             string deviceKey,
             string? tokenString,
             string? tipoAparato,
+            string? ipAddress,
             CancellationToken cancellationToken)
         {
             await using var scope = _scopeFactory.CreateAsyncScope();
@@ -96,6 +97,10 @@ namespace backend.Services
                         existingConfig.device_key = normalizedDeviceKey;
                         existingConfig.activo = true;
                         existingConfig.fecha_ultima_conexion = DateTime.UtcNow;
+                        if (!string.IsNullOrEmpty(ipAddress))
+                        {
+                            existingConfig.ip_address = ipAddress;
+                        }
                         configuracion = existingConfig;
                     }
                     else
@@ -106,7 +111,8 @@ namespace backend.Services
                             device_key = normalizedDeviceKey,
                             activo = true,
                             fecha_creacion = DateTime.UtcNow,
-                            fecha_ultima_conexion = DateTime.UtcNow
+                            fecha_ultima_conexion = DateTime.UtcNow,
+                            ip_address = ipAddress
                         };
                         db.AparatoConfiguracionesRed.Add(configuracion);
                     }
@@ -119,6 +125,10 @@ namespace backend.Services
             }
 
             configuracion.activo = true;
+            if (!string.IsNullOrEmpty(ipAddress))
+            {
+                configuracion.ip_address = ipAddress;
+            }
 
             configuracion.fecha_ultima_conexion = DateTime.UtcNow;
             await db.SaveChangesAsync(cancellationToken);

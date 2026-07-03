@@ -647,6 +647,7 @@ public class AparatosController : ControllerBase
             EstadoEncendido = a.ConfiguracionRed?.estado_encendido,
             FechaEstadoActualizado = a.ConfiguracionRed?.fecha_estado_actualizado,
             ConectadoRed = conectado,
+            IpAddress = a.ConfiguracionRed?.ip_address,
             CorrienteA = a.ConfiguracionRed?.corriente_actual,
             PotenciaW = a.ConfiguracionRed?.potencia_actual,
             EnergiaAcumuladaWh = a.ConfiguracionRed?.energia_acumulada_wh,

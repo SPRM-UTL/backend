@@ -43,6 +43,9 @@ namespace backend.DTOs
         [JsonPropertyName("conectado_red")]
         public bool? ConectadoRed { get; set; }
 
+        [JsonPropertyName("ip_address")]
+        public string? IpAddress { get; set; }
+
         [JsonPropertyName("fecha_estado_actualizado")]
         public DateTime? FechaEstadoActualizado { get; set; }
 
