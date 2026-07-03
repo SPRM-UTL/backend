@@ -32,6 +32,7 @@ namespace backend.Controllers
             [FromQuery] string deviceKey,
             [FromQuery] string? token,
             [FromQuery] string? targetDeviceKey,
+            [FromQuery] string? tipoAparato,
             CancellationToken cancellationToken)
         {
             if (!HttpContext.WebSockets.IsWebSocketRequest)
@@ -47,7 +48,7 @@ namespace backend.Controllers
             var normalizedDeviceKey = deviceKey.Trim();
             using var socket = await HttpContext.WebSockets.AcceptWebSocketAsync();
 
-            var sourceDevice = await _router.RegisterOrUpdateDeviceAsync(normalizedDeviceKey, token, cancellationToken);
+            var sourceDevice = await _router.RegisterOrUpdateDeviceAsync(normalizedDeviceKey, token, tipoAparato, cancellationToken);
 
             if (sourceDevice == null)
             {

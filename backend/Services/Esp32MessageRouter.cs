@@ -27,6 +27,7 @@ namespace backend.Services
         public async Task<AparatoConfiguracionRed?> RegisterOrUpdateDeviceAsync(
             string deviceKey,
             string? tokenString,
+            string? tipoAparato,
             CancellationToken cancellationToken)
         {
             await using var scope = _scopeFactory.CreateAsyncScope();
@@ -50,10 +51,25 @@ namespace backend.Services
 
                     if (tokenObj != null)
                     {
+                        int idTipo = 4; // Por defecto: Sockets Inteligentes
+                        string nombreAparato = "Nuevo Dispositivo";
+
+                        if (!string.IsNullOrWhiteSpace(tipoAparato))
+                        {
+                            var tipoDb = await db.AparatoTipos.FirstOrDefaultAsync(t => t.nombre_tipo == tipoAparato, cancellationToken);
+                            if (tipoDb != null)
+                            {
+                                idTipo = tipoDb.sk_aparato_tipo_id;
+                                if (tipoAparato == "Cámara") {
+                                    nombreAparato = "Cámara ESP32";
+                                }
+                            }
+                        }
+
                         var nuevoAparato = new Aparato {
                             sk_usuario_id = tokenObj.sk_usuario_id,
-                            nombre_aparato = "Nuevo Dispositivo",
-                            sk_aparato_tipo_id = 4,
+                            nombre_aparato = nombreAparato,
+                            sk_aparato_tipo_id = idTipo,
                             fecha_sincronizacion = DateTime.UtcNow
                         };
                         db.Aparatos.Add(nuevoAparato);

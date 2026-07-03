@@ -82,6 +82,10 @@ try
         if (!db.AparatoTipos.Any(t => t.nombre_tipo == "Ventilador"))
             db.AparatoTipos.Add(new AparatoTipo { nombre_tipo = "Ventilador", icono = "wind", es_asistente = false, soporta_wifi = true, soporta_bluetooth = true, requiere_vinculacion_bluetooth = false, orden = 5, palabras_clave_busqueda = "FAN,VENTILADOR" });
 
+        if (!db.AparatoTipos.Any(t => t.nombre_tipo == "Cámara"))
+            db.AparatoTipos.Add(new AparatoTipo { nombre_tipo = "Cámara", icono = "videocam", es_asistente = false, soporta_wifi = true, soporta_bluetooth = true, requiere_vinculacion_bluetooth = false, orden = 6, palabras_clave_busqueda = "CAM,CAMERA,CAMARA,WEBCAM,VIDEO" });
+
+
         // if (!db.AparatoTipos.Any(t => t.nombre_tipo == "Televisión"))
         //     db.AparatoTipos.Add(new AparatoTipo { nombre_tipo = "Televisión", icono = "tv_minimal", es_asistente = false, soporta_wifi = true, soporta_bluetooth = false, orden = 6, palabras_clave_busqueda = "TV,TELEVISION,SCREEN,DISPLAY" });
 
@@ -107,7 +111,7 @@ try
                 tipo.soporta_bluetooth = true;
                 tipo.soporta_wifi = true;
                 
-                if (tipo.nombre_tipo == "Enchufe" || tipo.nombre_tipo == "Ventilador") {
+                if (tipo.nombre_tipo == "Enchufe" || tipo.nombre_tipo == "Ventilador" || tipo.nombre_tipo == "Cámara") {
                     tipo.requiere_vinculacion_bluetooth = false;
                 }
             }
@@ -119,6 +123,7 @@ try
                     case "Enchufe": tipo.icono = "plug"; tipo.orden = 3; break;
                     case "Sockets Inteligentes": tipo.icono = "plug"; tipo.orden = 4; break;
                     case "Ventilador": tipo.icono = "wind"; tipo.orden = 5; break;
+                    case "Cámara": tipo.icono = "videocam"; tipo.orden = 6; break;
                     // case "Televisión": tipo.icono = "tv_minimal"; tipo.orden = 6; break;
                     // case "Bocinas": tipo.icono = "speaker"; tipo.orden = 7; break;
                     // case "Audífonos": tipo.icono = "headphones"; tipo.orden = 8; break;
