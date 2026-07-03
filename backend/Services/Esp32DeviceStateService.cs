@@ -146,6 +146,12 @@ namespace backend.Services
             string message,
             CancellationToken cancellationToken = default)
         {
+            if (TryParseTelemetry(message, out var telemetry))
+            {
+                await ProcessTelemetryAsync(configuracionRedId, telemetry, cancellationToken);
+                return;
+            }
+
             var payload = TryDeserializeJson(message, out var jsonRoot)
                 ? jsonRoot!
                 : new { raw = message };
@@ -192,6 +198,118 @@ namespace backend.Services
             {
                 await UpdatePowerStateAsync(configuracionRedId, estadoEncendido.Value, origen, cancellationToken);
             }
+        }
+
+        public async Task ProcessTelemetryAsync(
+            int configuracionRedId,
+            TelemetryReading telemetry,
+            CancellationToken cancellationToken = default)
+        {
+            await using var scope = _scopeFactory.CreateAsyncScope();
+            var db = scope.ServiceProvider.GetRequiredService<PruebaaspContext>();
+
+            var config = await db.AparatoConfiguracionesRed
+                .FirstOrDefaultAsync(c => c.sk_aparato_configuracion_red_id == configuracionRedId, cancellationToken);
+
+            if (config is null)
+            {
+                return;
+            }
+
+            var fechaMedicion = DateTime.UtcNow;
+            config.corriente_actual = telemetry.CorrienteA;
+            config.potencia_actual = telemetry.PotenciaW;
+            config.energia_acumulada_wh = telemetry.EnergiaWh;
+            config.fecha_medicion_consumo = fechaMedicion;
+
+            if (telemetry.EstadoEncendido.HasValue)
+            {
+                config.estado_encendido = telemetry.EstadoEncendido;
+                config.fecha_estado_actualizado = fechaMedicion;
+                config.origen_estado = "esp32_telemetry";
+            }
+
+            db.AparatoConsumoHistoricos.Add(new AparatoConsumoHistorico
+            {
+                sk_aparato_configuracion_red_id = configuracionRedId,
+                corriente_a = telemetry.CorrienteA,
+                potencia_w = telemetry.PotenciaW,
+                energia_wh = telemetry.EnergiaWh,
+                fecha_medicion = fechaMedicion
+            });
+
+            await db.SaveChangesAsync(cancellationToken);
+        }
+
+        public bool TryParseTelemetry(string message, out TelemetryReading telemetry)
+        {
+            telemetry = default!;
+            if (string.IsNullOrWhiteSpace(message) || !message.TrimStart().StartsWith('{'))
+            {
+                return false;
+            }
+
+            try
+            {
+                using var doc = JsonDocument.Parse(message);
+                var root = doc.RootElement;
+
+                var hasTelemetryEvent = root.TryGetProperty("event", out var eventProp) &&
+                    eventProp.GetString()?.Equals("telemetry", StringComparison.OrdinalIgnoreCase) == true;
+
+                var hasMeterFields =
+                    root.TryGetProperty("corriente", out _) ||
+                    root.TryGetProperty("potencia", out _) ||
+                    root.TryGetProperty("energia", out _);
+
+                if (!hasTelemetryEvent && !hasMeterFields)
+                {
+                    return false;
+                }
+
+                if (hasTelemetryEvent && !hasMeterFields)
+                {
+                    return false;
+                }
+
+                telemetry = new TelemetryReading
+                {
+                    CorrienteA = ReadDecimal(root, "corriente"),
+                    PotenciaW = ReadDecimal(root, "potencia"),
+                    EnergiaWh = ReadDecimal(root, "energia"),
+                    EstadoEncendido = TryParsePowerState(message)
+                };
+
+                return true;
+            }
+            catch (JsonException ex)
+            {
+                _logger.LogDebug(ex, "Mensaje ESP32 no es telemetría válida.");
+                return false;
+            }
+        }
+
+        private static decimal ReadDecimal(JsonElement root, string propertyName)
+        {
+            if (!root.TryGetProperty(propertyName, out var value))
+            {
+                return 0m;
+            }
+
+            return value.ValueKind switch
+            {
+                JsonValueKind.Number => value.GetDecimal(),
+                JsonValueKind.String when decimal.TryParse(value.GetString(), out var parsed) => parsed,
+                _ => 0m
+            };
+        }
+
+        public sealed class TelemetryReading
+        {
+            public decimal CorrienteA { get; init; }
+            public decimal PotenciaW { get; init; }
+            public decimal EnergiaWh { get; init; }
+            public bool? EstadoEncendido { get; init; }
         }
 
         private static string? ExtractComando(string message)

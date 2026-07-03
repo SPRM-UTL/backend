@@ -93,6 +93,64 @@ public class AparatosController : ControllerBase
         return mensajes;
     }
 
+    [HttpGet("{sk_aparato_id}/consumo")]
+    public async Task<ActionResult<IEnumerable<AparatoConsumoDto>>> GetConsumoHistorico(
+        int sk_aparato_id,
+        [FromQuery] int limit = 50)
+    {
+        var usuarioId = (int?)HttpContext.Items["UsuarioId"];
+        var aparato = await _context.Aparatos
+            .Include(a => a.ConfiguracionRed)
+            .FirstOrDefaultAsync(a => a.sk_aparato_id == sk_aparato_id && a.sk_usuario_id == usuarioId);
+
+        if (aparato?.ConfiguracionRed == null)
+        {
+            return NotFound("El aparato no tiene configuración de red.");
+        }
+
+        limit = Math.Clamp(limit, 1, 500);
+
+        var historico = await _context.AparatoConsumoHistoricos
+            .Where(c => c.sk_aparato_configuracion_red_id == aparato.ConfiguracionRed.sk_aparato_configuracion_red_id)
+            .OrderByDescending(c => c.fecha_medicion)
+            .Take(limit)
+            .Select(c => new AparatoConsumoDto
+            {
+                SkConsumoId = c.sk_consumo_id,
+                SkAparatoId = sk_aparato_id,
+                CorrienteA = c.corriente_a,
+                PotenciaW = c.potencia_w,
+                EnergiaWh = c.energia_wh,
+                FechaMedicion = c.fecha_medicion
+            })
+            .ToListAsync();
+
+        return historico;
+    }
+
+    [HttpGet("{sk_aparato_id}/consumo/actual")]
+    public async Task<ActionResult<AparatoConsumoActualDto>> GetConsumoActual(int sk_aparato_id)
+    {
+        var usuarioId = (int?)HttpContext.Items["UsuarioId"];
+        var aparato = await _context.Aparatos
+            .Include(a => a.ConfiguracionRed)
+            .FirstOrDefaultAsync(a => a.sk_aparato_id == sk_aparato_id && a.sk_usuario_id == usuarioId);
+
+        if (aparato?.ConfiguracionRed == null)
+        {
+            return NotFound("El aparato no tiene configuración de red.");
+        }
+
+        var config = aparato.ConfiguracionRed;
+        return new AparatoConsumoActualDto
+        {
+            CorrienteA = config.corriente_actual,
+            PotenciaW = config.potencia_actual,
+            EnergiaAcumuladaWh = config.energia_acumulada_wh,
+            FechaMedicionConsumo = config.fecha_medicion_consumo
+        };
+    }
+
     // PUT: api/Dim_Aparatos/5
     // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
     [HttpPut("{sk_aparato_id}")]
@@ -460,7 +518,11 @@ public class AparatosController : ControllerBase
             NombreHabitacion = a.Habitacion?.nombre_habitacion,
             EstadoEncendido = a.ConfiguracionRed?.estado_encendido,
             FechaEstadoActualizado = a.ConfiguracionRed?.fecha_estado_actualizado,
-            ConectadoRed = conectado
+            ConectadoRed = conectado,
+            CorrienteA = a.ConfiguracionRed?.corriente_actual,
+            PotenciaW = a.ConfiguracionRed?.potencia_actual,
+            EnergiaAcumuladaWh = a.ConfiguracionRed?.energia_acumulada_wh,
+            FechaMedicionConsumo = a.ConfiguracionRed?.fecha_medicion_consumo
         };
     }
 

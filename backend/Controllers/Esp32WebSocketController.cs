@@ -139,7 +139,11 @@ namespace backend.Controllers
                 connected = isConnected,
                 estado_encendido = config?.estado_encendido,
                 fecha_estado_actualizado = config?.fecha_estado_actualizado,
-                origen_estado = config?.origen_estado
+                origen_estado = config?.origen_estado,
+                corriente_a = config?.corriente_actual,
+                potencia_w = config?.potencia_actual,
+                energia_acumulada_wh = config?.energia_acumulada_wh,
+                fecha_medicion_consumo = config?.fecha_medicion_consumo
             });
         }
 
@@ -172,7 +176,11 @@ namespace backend.Controllers
                 estado_encendido = config.estado_encendido,
                 conectado,
                 fecha_estado_actualizado = config.fecha_estado_actualizado,
-                origen_estado = config.origen_estado
+                origen_estado = config.origen_estado,
+                corriente_a = config.corriente_actual,
+                potencia_w = config.potencia_actual,
+                energia_acumulada_wh = config.energia_acumulada_wh,
+                fecha_medicion_consumo = config.fecha_medicion_consumo
             });
         }
 

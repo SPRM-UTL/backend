@@ -24,6 +24,7 @@ public partial class PruebaaspContext : DbContext
     public virtual DbSet<AparatoBluetooth> AparatoBluetooth { get; set; }
     public virtual DbSet<AparatoConfiguracionRed> AparatoConfiguracionesRed { get; set; }
     public virtual DbSet<AparatoMensaje> AparatoMensajes { get; set; }
+    public virtual DbSet<AparatoConsumoHistorico> AparatoConsumoHistoricos { get; set; }
     public virtual DbSet<AparatoControl> AparatoControles { get; set; }
     public virtual DbSet<Tiempo> Tiempos { get; set; }
     public virtual DbSet<HistorialActividad> HistorialActividades { get; set; }
@@ -158,6 +159,10 @@ public partial class PruebaaspContext : DbContext
             entity.Property(e => e.estado_encendido).HasColumnName("estado_encendido");
             entity.Property(e => e.fecha_estado_actualizado).HasColumnName("fecha_estado_actualizado");
             entity.Property(e => e.origen_estado).HasMaxLength(20).HasColumnName("origen_estado");
+            entity.Property(e => e.corriente_actual).HasColumnName("corriente_actual");
+            entity.Property(e => e.potencia_actual).HasColumnName("potencia_actual");
+            entity.Property(e => e.energia_acumulada_wh).HasColumnName("energia_acumulada_wh");
+            entity.Property(e => e.fecha_medicion_consumo).HasColumnName("fecha_medicion_consumo");
 
             entity.HasIndex(e => e.sk_aparato_id).IsUnique();
             entity.HasIndex(e => e.device_key).IsUnique(false);
@@ -184,6 +189,26 @@ public partial class PruebaaspContext : DbContext
             entity.HasIndex(e => e.sk_aparato_configuracion_red_id);
             entity.HasOne(e => e.ConfiguracionRed)
                 .WithMany(e => e.Mensajes)
+                .HasForeignKey(e => e.sk_aparato_configuracion_red_id)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<AparatoConsumoHistorico>(entity =>
+        {
+            entity.HasKey(e => e.sk_consumo_id);
+            entity.ToTable("aparato_consumo_historico");
+
+            entity.Property(e => e.sk_consumo_id).HasColumnName("sk_consumo_id");
+            entity.Property(e => e.sk_aparato_configuracion_red_id).HasColumnName("sk_aparato_configuracion_red_id");
+            entity.Property(e => e.corriente_a).HasColumnName("corriente_a");
+            entity.Property(e => e.potencia_w).HasColumnName("potencia_w");
+            entity.Property(e => e.energia_wh).HasColumnName("energia_wh");
+            entity.Property(e => e.fecha_medicion).HasColumnName("fecha_medicion");
+
+            entity.HasIndex(e => e.sk_aparato_configuracion_red_id);
+            entity.HasIndex(e => e.fecha_medicion);
+            entity.HasOne(e => e.ConfiguracionRed)
+                .WithMany(e => e.ConsumoHistorico)
                 .HasForeignKey(e => e.sk_aparato_configuracion_red_id)
                 .OnDelete(DeleteBehavior.Cascade);
         });

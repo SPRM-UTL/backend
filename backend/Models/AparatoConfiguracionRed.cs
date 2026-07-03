@@ -44,8 +44,22 @@ namespace backend.Models
         [MaxLength(20)]
         public string? origen_estado { get; set; }
 
+        [Column(TypeName = "decimal(8,3)")]
+        public decimal? corriente_actual { get; set; }
+
+        [Column(TypeName = "decimal(10,2)")]
+        public decimal? potencia_actual { get; set; }
+
+        [Column(TypeName = "decimal(12,3)")]
+        public decimal? energia_acumulada_wh { get; set; }
+
+        public DateTime? fecha_medicion_consumo { get; set; }
+
         [JsonIgnore]
         public List<AparatoMensaje>? Mensajes { get; set; }
+
+        [JsonIgnore]
+        public List<AparatoConsumoHistorico>? ConsumoHistorico { get; set; }
 
         [ForeignKey(nameof(sk_aparato_id))]
         [JsonIgnore]

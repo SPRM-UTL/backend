@@ -52,6 +52,7 @@ using (var scope = app.Services.CreateScope())
     try
     {
         EnsureEsp32Schema(db);
+        EnsureConsumoSchema(db);
     }
     catch (Exception ex)
     {
@@ -220,6 +221,78 @@ static void EnsureEsp32Schema(PruebaaspContext db)
             db.Database.ExecuteSqlRaw("""
                 INSERT INTO `__EFMigrationsHistory` (`MigrationId`, `ProductVersion`)
                 VALUES ('20260701120000_AddEsp32EstadoYMensajes', '9.0.16');
+                """);
+        }
+    }
+    finally
+    {
+        db.Database.CloseConnection();
+    }
+}
+
+static void EnsureConsumoSchema(PruebaaspContext db)
+{
+    db.Database.OpenConnection();
+    try
+    {
+        if (!ColumnExists(db, "aparato_configuracion_red", "corriente_actual"))
+        {
+            db.Database.ExecuteSqlRaw("""
+                ALTER TABLE `aparato_configuracion_red`
+                ADD COLUMN `corriente_actual` decimal(8,3) NULL;
+                """);
+        }
+
+        if (!ColumnExists(db, "aparato_configuracion_red", "potencia_actual"))
+        {
+            db.Database.ExecuteSqlRaw("""
+                ALTER TABLE `aparato_configuracion_red`
+                ADD COLUMN `potencia_actual` decimal(10,2) NULL;
+                """);
+        }
+
+        if (!ColumnExists(db, "aparato_configuracion_red", "energia_acumulada_wh"))
+        {
+            db.Database.ExecuteSqlRaw("""
+                ALTER TABLE `aparato_configuracion_red`
+                ADD COLUMN `energia_acumulada_wh` decimal(12,3) NULL;
+                """);
+        }
+
+        if (!ColumnExists(db, "aparato_configuracion_red", "fecha_medicion_consumo"))
+        {
+            db.Database.ExecuteSqlRaw("""
+                ALTER TABLE `aparato_configuracion_red`
+                ADD COLUMN `fecha_medicion_consumo` datetime(6) NULL;
+                """);
+        }
+
+        if (!TableExists(db, "aparato_consumo_historico"))
+        {
+            db.Database.ExecuteSqlRaw("""
+                CREATE TABLE `aparato_consumo_historico` (
+                    `sk_consumo_id` bigint NOT NULL AUTO_INCREMENT,
+                    `sk_aparato_configuracion_red_id` int NOT NULL,
+                    `corriente_a` decimal(8,3) NOT NULL,
+                    `potencia_w` decimal(10,2) NOT NULL,
+                    `energia_wh` decimal(12,3) NOT NULL,
+                    `fecha_medicion` datetime(6) NOT NULL,
+                    PRIMARY KEY (`sk_consumo_id`),
+                    INDEX `IX_aparato_consumo_historico_sk_aparato_configuracion_red_id` (`sk_aparato_configuracion_red_id`),
+                    INDEX `IX_aparato_consumo_historico_fecha_medicion` (`fecha_medicion`),
+                    CONSTRAINT `FK_aparato_consumo_historico_aparato_configuracion_red`
+                        FOREIGN KEY (`sk_aparato_configuracion_red_id`)
+                        REFERENCES `aparato_configuracion_red` (`sk_aparato_configuracion_red_id`)
+                        ON DELETE CASCADE
+                ) CHARACTER SET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+                """);
+        }
+
+        if (!MigrationApplied(db, "20260702183000_AddConsumoHistorico"))
+        {
+            db.Database.ExecuteSqlRaw("""
+                INSERT INTO `__EFMigrationsHistory` (`MigrationId`, `ProductVersion`)
+                VALUES ('20260702183000_AddConsumoHistorico', '9.0.16');
                 """);
         }
     }

@@ -45,5 +45,17 @@ namespace backend.DTOs
 
         [JsonPropertyName("fecha_estado_actualizado")]
         public DateTime? FechaEstadoActualizado { get; set; }
+
+        [JsonPropertyName("corriente_a")]
+        public decimal? CorrienteA { get; set; }
+
+        [JsonPropertyName("potencia_w")]
+        public decimal? PotenciaW { get; set; }
+
+        [JsonPropertyName("energia_acumulada_wh")]
+        public decimal? EnergiaAcumuladaWh { get; set; }
+
+        [JsonPropertyName("fecha_medicion_consumo")]
+        public DateTime? FechaMedicionConsumo { get; set; }
     }
 }
