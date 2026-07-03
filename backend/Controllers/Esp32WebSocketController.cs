@@ -46,7 +46,14 @@ namespace backend.Controllers
             }
 
             var normalizedDeviceKey = deviceKey.Trim();
-            var remoteIp = HttpContext.Connection.RemoteIpAddress?.ToString();
+            
+            var remoteIpAddress = HttpContext.Connection.RemoteIpAddress;
+            if (remoteIpAddress != null && remoteIpAddress.IsIPv4MappedToIPv6)
+            {
+                remoteIpAddress = remoteIpAddress.MapToIPv4();
+            }
+            var remoteIp = remoteIpAddress?.ToString();
+            
             using var socket = await HttpContext.WebSockets.AcceptWebSocketAsync();
 
             var sourceDevice = await _router.RegisterOrUpdateDeviceAsync(normalizedDeviceKey, token, tipoAparato, remoteIp, cancellationToken);
