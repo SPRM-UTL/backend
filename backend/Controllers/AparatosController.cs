@@ -173,6 +173,23 @@ public class AparatosController : ControllerBase
         if (!lecturas.Any())
             return resumen;
 
+        if (granularidad.ToLower() == "envivo")
+        {
+            // Tomar las últimas 60 lecturas (ej. últimos 5 minutos si es 1 por 5 seg)
+            var lecturasEnVivo = lecturas.OrderByDescending(l => l.fecha_medicion).Take(60).OrderBy(l => l.fecha_medicion);
+            foreach (var l in lecturasEnVivo)
+            {
+                resumen.Puntos.Add(new AparatoConsumoPuntoDto
+                {
+                    Periodo = l.fecha_medicion,
+                    PotenciaPromedioW = (float)l.potencia_w,
+                    CorrientePromedioA = (float)l.corriente_a,
+                    EnergiaConsumidaWh = (float)l.energia_wh
+                });
+            }
+            return resumen;
+        }
+
         IEnumerable<IGrouping<DateTime, AparatoConsumoHistorico>> grupos;
 
         if (granularidad.ToLower() == "mes")
