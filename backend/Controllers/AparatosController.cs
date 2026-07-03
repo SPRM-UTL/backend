@@ -96,7 +96,9 @@ public class AparatosController : ControllerBase
     [HttpGet("{sk_aparato_id}/consumo")]
     public async Task<ActionResult<IEnumerable<AparatoConsumoDto>>> GetConsumoHistorico(
         int sk_aparato_id,
-        [FromQuery] int limit = 50)
+        [FromQuery] int limit = 50,
+        [FromQuery] DateTime? desde = null,
+        [FromQuery] DateTime? hasta = null)
     {
         var usuarioId = (int?)HttpContext.Items["UsuarioId"];
         var aparato = await _context.Aparatos
@@ -110,8 +112,15 @@ public class AparatosController : ControllerBase
 
         limit = Math.Clamp(limit, 1, 500);
 
-        var historico = await _context.AparatoConsumoHistoricos
-            .Where(c => c.sk_aparato_configuracion_red_id == aparato.ConfiguracionRed.sk_aparato_configuracion_red_id)
+        var query = _context.AparatoConsumoHistoricos
+            .Where(c => c.sk_aparato_configuracion_red_id == aparato.ConfiguracionRed.sk_aparato_configuracion_red_id);
+
+        if (desde.HasValue)
+            query = query.Where(c => c.fecha_medicion >= desde.Value);
+        if (hasta.HasValue)
+            query = query.Where(c => c.fecha_medicion <= hasta.Value);
+
+        var historico = await query
             .OrderByDescending(c => c.fecha_medicion)
             .Take(limit)
             .Select(c => new AparatoConsumoDto
@@ -126,6 +135,68 @@ public class AparatosController : ControllerBase
             .ToListAsync();
 
         return historico;
+    }
+
+    [HttpGet("{sk_aparato_id}/consumo/resumen")]
+    public async Task<ActionResult<AparatoConsumoResumenDto>> GetConsumoResumen(
+        int sk_aparato_id,
+        [FromQuery] string granularidad = "dia",
+        [FromQuery] DateTime? desde = null,
+        [FromQuery] DateTime? hasta = null)
+    {
+        var usuarioId = (int?)HttpContext.Items["UsuarioId"];
+        var aparato = await _context.Aparatos
+            .Include(a => a.ConfiguracionRed)
+            .FirstOrDefaultAsync(a => a.sk_aparato_id == sk_aparato_id && a.sk_usuario_id == usuarioId);
+
+        if (aparato?.ConfiguracionRed == null)
+            return NotFound("El aparato no tiene configuración de red.");
+
+        var query = _context.AparatoConsumoHistoricos
+            .Where(c => c.sk_aparato_configuracion_red_id == aparato.ConfiguracionRed.sk_aparato_configuracion_red_id);
+
+        if (desde.HasValue)
+            query = query.Where(c => c.fecha_medicion >= desde.Value);
+        if (hasta.HasValue)
+            query = query.Where(c => c.fecha_medicion <= hasta.Value);
+
+        var lecturas = await query.OrderBy(c => c.fecha_medicion).ToListAsync();
+
+        var resumen = new AparatoConsumoResumenDto
+        {
+            Granularidad = granularidad,
+            Desde = desde ?? (lecturas.Any() ? lecturas.Min(l => l.fecha_medicion) : DateTime.UtcNow.Date),
+            Hasta = hasta ?? (lecturas.Any() ? lecturas.Max(l => l.fecha_medicion) : DateTime.UtcNow.Date),
+            Puntos = new List<AparatoConsumoPuntoDto>()
+        };
+
+        if (!lecturas.Any())
+            return resumen;
+
+        IEnumerable<IGrouping<DateTime, AparatoConsumoHistorico>> grupos;
+
+        if (granularidad.ToLower() == "mes")
+        {
+            grupos = lecturas.GroupBy(l => l.fecha_medicion.Date);
+        }
+        else
+        {
+            grupos = lecturas.GroupBy(l => new DateTime(l.fecha_medicion.Year, l.fecha_medicion.Month, l.fecha_medicion.Day, l.fecha_medicion.Hour, 0, 0, l.fecha_medicion.Kind));
+        }
+
+        foreach (var grupo in grupos)
+        {
+            var p = new AparatoConsumoPuntoDto
+            {
+                Periodo = grupo.Key,
+                PotenciaPromedioW = (float)grupo.Average(l => l.potencia_w),
+                CorrientePromedioA = (float)grupo.Average(l => l.corriente_a),
+                EnergiaConsumidaWh = (float)(grupo.Max(l => l.energia_wh) - grupo.Min(l => l.energia_wh))
+            };
+            resumen.Puntos.Add(p);
+        }
+
+        return resumen;
     }
 
     [HttpGet("{sk_aparato_id}/consumo/actual")]
@@ -198,13 +269,36 @@ public class AparatosController : ControllerBase
     public async Task<ActionResult<AparatoDto>> PostAparato(AparatoDto dto)
     {
         var usuarioId = (int?)HttpContext.Items["UsuarioId"];
+        var macBluetooth = Normalize(dto.MacBluetooth);
+        
+        if (macBluetooth != null)
+        {
+            var existingAparato = await _context.Aparatos
+                .Include(a => a.Bluetooth)
+                .Include(a => a.ConfiguracionRed)
+                .Include(a => a.Tipo)
+                .Include(a => a.Accion)
+                .Include(a => a.Habitacion)
+                .FirstOrDefaultAsync(a => a.sk_usuario_id == usuarioId && 
+                                          a.Bluetooth != null && 
+                                          a.Bluetooth.mac_bluetooth == macBluetooth);
+                                          
+            if (existingAparato != null)
+            {
+                // Si el dispositivo ya fue creado por el WebSocket (con "Nuevo Dispositivo"), lo actualizamos
+                await ApplyDto(existingAparato, dto);
+                await _context.SaveChangesAsync();
+                return Ok(MapAparatoDto(existingAparato));
+            }
+        }
+
         var aparato = new Aparato { sk_usuario_id = usuarioId };
         await ApplyDto(aparato, dto);
 
         _context.Aparatos.Add(aparato);
         await _context.SaveChangesAsync();
 
-        return CreatedAtAction(nameof(GetAparatoById), new { sk_aparato_id = aparato.sk_aparato_id }, ToDto(aparato));
+        return CreatedAtAction(nameof(GetAparatoById), new { sk_aparato_id = aparato.sk_aparato_id }, MapAparatoDto(aparato));
     }
 
     // DELETE: api/Dim_Aparatos/5
