@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using backend.Middleware;
 using DotNetEnv;
 using backend.Services;
+using System.Data.Common;
 
 var builder = WebApplication.CreateBuilder(args);
 Env.Load();
@@ -35,13 +36,34 @@ builder.Services.AddDbContext<PruebaaspContext>(options =>
     ));
 
 var app = builder.Build();
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<PruebaaspContext>();
+
+    try
+    {
+        db.Database.Migrate();
+    }
+    catch (Exception ex)
+    {
+        app.Logger.LogError(ex, "Migrate falló");
+    }
+
+    try
+    {
+        EnsureEsp32Schema(db);
+    }
+    catch (Exception ex)
+    {
+        app.Logger.LogError(ex, "EnsureEsp32Schema falló");
+    }
+}
+
 try
 {
     using (var scope = app.Services.CreateScope())
     {
         var db = scope.ServiceProvider.GetRequiredService<PruebaaspContext>();
-
-        db.Database.Migrate();
 
         // Seeder dinámico de tipos de aparatos
         if (!db.AparatoTipos.Any(t => t.nombre_tipo == "Asistente"))
@@ -117,7 +139,9 @@ if (!app.Environment.IsDevelopment())
     app.UseHsts();
 }
 
-app.UseHttpsRedirection();
+app.UseWhen(
+    context => !context.Request.Path.StartsWithSegments("/ws"),
+    branch => branch.UseHttpsRedirection());
 app.UseRouting();
 
 app.UseCors("AngularPolicy");
@@ -139,3 +163,129 @@ app.MapControllerRoute(
     .WithStaticAssets();
 
 app.Run();
+
+static void EnsureEsp32Schema(PruebaaspContext db)
+{
+    db.Database.OpenConnection();
+    try
+    {
+        if (!ColumnExists(db, "aparato_configuracion_red", "estado_encendido"))
+        {
+            db.Database.ExecuteSqlRaw("""
+                ALTER TABLE `aparato_configuracion_red`
+                ADD COLUMN `estado_encendido` tinyint(1) NULL;
+                """);
+        }
+
+        if (!ColumnExists(db, "aparato_configuracion_red", "fecha_estado_actualizado"))
+        {
+            db.Database.ExecuteSqlRaw("""
+                ALTER TABLE `aparato_configuracion_red`
+                ADD COLUMN `fecha_estado_actualizado` datetime(6) NULL;
+                """);
+        }
+
+        if (!ColumnExists(db, "aparato_configuracion_red", "origen_estado"))
+        {
+            db.Database.ExecuteSqlRaw("""
+                ALTER TABLE `aparato_configuracion_red`
+                ADD COLUMN `origen_estado` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL;
+                """);
+        }
+
+        if (!TableExists(db, "aparato_mensaje"))
+        {
+            db.Database.ExecuteSqlRaw("""
+                CREATE TABLE `aparato_mensaje` (
+                    `sk_mensaje_id` bigint NOT NULL AUTO_INCREMENT,
+                    `sk_aparato_configuracion_red_id` int NOT NULL,
+                    `direccion` varchar(10) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+                    `payload_json` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+                    `comando` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL,
+                    `procesado` tinyint(1) NOT NULL,
+                    `error_procesamiento` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL,
+                    `fecha_creacion` datetime(6) NOT NULL,
+                    PRIMARY KEY (`sk_mensaje_id`),
+                    INDEX `IX_aparato_mensaje_sk_aparato_configuracion_red_id` (`sk_aparato_configuracion_red_id`),
+                    CONSTRAINT `FK_aparato_mensaje_aparato_configuracion_red`
+                        FOREIGN KEY (`sk_aparato_configuracion_red_id`)
+                        REFERENCES `aparato_configuracion_red` (`sk_aparato_configuracion_red_id`)
+                        ON DELETE CASCADE
+                ) CHARACTER SET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+                """);
+        }
+
+        if (!MigrationApplied(db, "20260701120000_AddEsp32EstadoYMensajes"))
+        {
+            db.Database.ExecuteSqlRaw("""
+                INSERT INTO `__EFMigrationsHistory` (`MigrationId`, `ProductVersion`)
+                VALUES ('20260701120000_AddEsp32EstadoYMensajes', '9.0.16');
+                """);
+        }
+    }
+    finally
+    {
+        db.Database.CloseConnection();
+    }
+}
+
+static bool ColumnExists(PruebaaspContext db, string tableName, string columnName)
+{
+    using var command = CreateSchemaCommand(
+        db,
+        """
+        SELECT COUNT(*)
+        FROM INFORMATION_SCHEMA.COLUMNS
+        WHERE TABLE_SCHEMA = DATABASE()
+          AND TABLE_NAME = @tableName
+          AND COLUMN_NAME = @columnName;
+        """);
+
+    AddParameter(command, "@tableName", tableName);
+    AddParameter(command, "@columnName", columnName);
+    return Convert.ToInt32(command.ExecuteScalar()) > 0;
+}
+
+static bool MigrationApplied(PruebaaspContext db, string migrationId)
+{
+    using var command = CreateSchemaCommand(
+        db,
+        """
+        SELECT COUNT(*)
+        FROM `__EFMigrationsHistory`
+        WHERE `MigrationId` = @migrationId;
+        """);
+
+    AddParameter(command, "@migrationId", migrationId);
+    return Convert.ToInt32(command.ExecuteScalar()) > 0;
+}
+
+static bool TableExists(PruebaaspContext db, string tableName)
+{
+    using var command = CreateSchemaCommand(
+        db,
+        """
+        SELECT COUNT(*)
+        FROM INFORMATION_SCHEMA.TABLES
+        WHERE TABLE_SCHEMA = DATABASE()
+          AND TABLE_NAME = @tableName;
+        """);
+
+    AddParameter(command, "@tableName", tableName);
+    return Convert.ToInt32(command.ExecuteScalar()) > 0;
+}
+
+static DbCommand CreateSchemaCommand(PruebaaspContext db, string commandText)
+{
+    var command = db.Database.GetDbConnection().CreateCommand();
+    command.CommandText = commandText;
+    return command;
+}
+
+static void AddParameter(DbCommand command, string name, object value)
+{
+    var parameter = command.CreateParameter();
+    parameter.ParameterName = name;
+    parameter.Value = value;
+    command.Parameters.Add(parameter);
+}

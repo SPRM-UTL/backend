@@ -153,25 +153,40 @@ public class AparatosController : ControllerBase
     [HttpDelete("{sk_aparato_id}")]
     public async Task<IActionResult> DeleteAparato(int? sk_aparato_id)
     {
+        if (sk_aparato_id == null)
+        {
+            return BadRequest(new { mensaje = "Id de dispositivo inválido" });
+        }
+
         var usuarioId = (int?)HttpContext.Items["UsuarioId"];
         var aparato = await _context.Aparatos
             .FirstOrDefaultAsync(a => a.sk_aparato_id == sk_aparato_id && a.sk_usuario_id == usuarioId);
         if (aparato == null)
         {
-            return NotFound();
+            return NotFound(new { mensaje = "Dispositivo no encontrado" });
         }
 
         try
         {
+            var controlesRelacionados = await _context.AparatoControles
+                .Where(c => c.sk_aparato_controlador_id == sk_aparato_id.Value ||
+                            c.sk_aparato_controlado_id == sk_aparato_id.Value)
+                .ToListAsync();
+
+            if (controlesRelacionados.Count > 0)
+            {
+                _context.AparatoControles.RemoveRange(controlesRelacionados);
+            }
+
             _context.Aparatos.Remove(aparato);
             await _context.SaveChangesAsync();
             return Ok(new { mensaje = "Dispositivo eliminado exitosamente" });
         }
-        catch (DbUpdateException ex)
+        catch (DbUpdateException)
         {
             return BadRequest(new { mensaje = "No se puede eliminar el dispositivo porque está siendo utilizado (ej. como controlador o controlado)." });
         }
-        catch (Exception ex)
+        catch (Exception)
         {
             return StatusCode(500, new { mensaje = "Error interno del servidor al eliminar el dispositivo." });
         }
@@ -318,7 +333,7 @@ public class AparatosController : ControllerBase
             await _context.SaveChangesAsync();
             return Ok(new { mensaje = "Control eliminado exitosamente" });
         }
-        catch (Exception ex)
+        catch (Exception)
         {
             return StatusCode(500, new { mensaje = "Error interno del servidor al eliminar el control." });
         }

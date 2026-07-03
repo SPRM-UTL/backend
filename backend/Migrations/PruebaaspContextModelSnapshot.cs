@@ -153,6 +153,10 @@ namespace backend.Migrations
                         .HasColumnType("varchar(100)")
                         .HasColumnName("device_key");
 
+                    b.Property<bool?>("estado_encendido")
+                        .HasColumnType("tinyint(1)")
+                        .HasColumnName("estado_encendido");
+
                     b.Property<DateTime>("fecha_creacion")
                         .HasColumnType("datetime(6)")
                         .HasColumnName("fecha_creacion");
@@ -160,6 +164,10 @@ namespace backend.Migrations
                     b.Property<DateTime?>("fecha_ultima_conexion")
                         .HasColumnType("datetime(6)")
                         .HasColumnName("fecha_ultima_conexion");
+
+                    b.Property<DateTime?>("fecha_estado_actualizado")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("fecha_estado_actualizado");
 
                     b.Property<string>("host_name")
                         .HasMaxLength(100)
@@ -175,6 +183,11 @@ namespace backend.Migrations
                         .HasMaxLength(17)
                         .HasColumnType("varchar(17)")
                         .HasColumnName("mac_address");
+
+                    b.Property<string>("origen_estado")
+                        .HasMaxLength(20)
+                        .HasColumnType("varchar(20)")
+                        .HasColumnName("origen_estado");
 
                     b.Property<string>("protocolo_socket")
                         .HasMaxLength(20)
@@ -202,6 +215,55 @@ namespace backend.Migrations
                         .IsUnique();
 
                     b.ToTable("aparato_configuracion_red", (string)null);
+                });
+
+            modelBuilder.Entity("backend.Models.AparatoMensaje", b =>
+                {
+                    b.Property<long>("sk_mensaje_id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasColumnName("sk_mensaje_id");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<long>("sk_mensaje_id"));
+
+                    b.Property<string>("comando")
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100)")
+                        .HasColumnName("comando");
+
+                    b.Property<string>("direccion")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("varchar(10)")
+                        .HasColumnName("direccion");
+
+                    b.Property<string>("error_procesamiento")
+                        .HasMaxLength(500)
+                        .HasColumnType("varchar(500)")
+                        .HasColumnName("error_procesamiento");
+
+                    b.Property<DateTime>("fecha_creacion")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("fecha_creacion");
+
+                    b.Property<string>("payload_json")
+                        .IsRequired()
+                        .HasColumnType("longtext")
+                        .HasColumnName("payload_json");
+
+                    b.Property<bool>("procesado")
+                        .HasColumnType("tinyint(1)")
+                        .HasColumnName("procesado");
+
+                    b.Property<int>("sk_aparato_configuracion_red_id")
+                        .HasColumnType("int")
+                        .HasColumnName("sk_aparato_configuracion_red_id");
+
+                    b.HasKey("sk_mensaje_id");
+
+                    b.HasIndex("sk_aparato_configuracion_red_id");
+
+                    b.ToTable("aparato_mensaje", (string)null);
                 });
 
             modelBuilder.Entity("backend.Models.AparatoControl", b =>
@@ -684,6 +746,17 @@ namespace backend.Migrations
                     b.Navigation("Aparato");
                 });
 
+            modelBuilder.Entity("backend.Models.AparatoMensaje", b =>
+                {
+                    b.HasOne("backend.Models.AparatoConfiguracionRed", "ConfiguracionRed")
+                        .WithMany("Mensajes")
+                        .HasForeignKey("sk_aparato_configuracion_red_id")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("ConfiguracionRed");
+                });
+
             modelBuilder.Entity("backend.Models.AparatoControl", b =>
                 {
                     b.HasOne("backend.Models.Aparato", "Controlado")
@@ -804,6 +877,11 @@ namespace backend.Migrations
                         .IsRequired();
 
                     b.Navigation("Usuario");
+                });
+
+            modelBuilder.Entity("backend.Models.AparatoConfiguracionRed", b =>
+                {
+                    b.Navigation("Mensajes");
                 });
 
             modelBuilder.Entity("backend.Models.Aparato", b =>
