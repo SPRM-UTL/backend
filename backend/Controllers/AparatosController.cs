@@ -226,9 +226,20 @@ public class AparatosController : ControllerBase
 
         try
         {
+            var aparatoId = sk_aparato_id.Value;
+
+            var gestosVinculados = await _context.Gestos
+                .Where(g => g.sk_aparato_id == aparatoId && g.sk_usuario_id == usuarioId)
+                .ToListAsync();
+
+            foreach (var gesto in gestosVinculados)
+            {
+                gesto.sk_aparato_id = null;
+            }
+
             var controlesRelacionados = await _context.AparatoControles
-                .Where(c => c.sk_aparato_controlador_id == sk_aparato_id.Value ||
-                            c.sk_aparato_controlado_id == sk_aparato_id.Value)
+                .Where(c => c.sk_aparato_controlador_id == aparatoId ||
+                            c.sk_aparato_controlado_id == aparatoId)
                 .ToListAsync();
 
             if (controlesRelacionados.Count > 0)
@@ -238,11 +249,17 @@ public class AparatosController : ControllerBase
 
             _context.Aparatos.Remove(aparato);
             await _context.SaveChangesAsync();
+
             return Ok(new { mensaje = "Dispositivo eliminado exitosamente" });
         }
-        catch (DbUpdateException)
+        catch (DbUpdateException ex)
         {
-            return BadRequest(new { mensaje = "No se puede eliminar el dispositivo porque está siendo utilizado (ej. como controlador o controlado)." });
+            var innerMessage = ex.InnerException?.Message ?? ex.Message;
+            return BadRequest(new
+            {
+                mensaje = "No se puede eliminar el dispositivo porque tiene registros relacionados.",
+                detalle = innerMessage
+            });
         }
         catch (Exception)
         {
