@@ -262,7 +262,7 @@ namespace backend.Services
                     root.TryGetProperty("potencia", out _) ||
                     root.TryGetProperty("energia", out _);
 
-                if (!hasTelemetryEvent && !hasMeterFields)
+                if (!hasTelemetryEvent)
                 {
                     return false;
                 }
