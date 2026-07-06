@@ -24,7 +24,8 @@ public class UsuariosDimensionController : ControllerBase
             {
                 Id = u.sk_usuario_id,
                 Nombre = u.nombre_usuario,
-                Correo = u.email_usuario
+                Correo = u.email_usuario,
+                RutaImagen = u.ruta_imagen
             })
             .ToListAsync();
     }
@@ -39,7 +40,8 @@ public class UsuariosDimensionController : ControllerBase
             {
                 Id = u.sk_usuario_id,
                 Nombre = u.nombre_usuario,
-                Correo = u.email_usuario
+                Correo = u.email_usuario,
+                RutaImagen = u.ruta_imagen
             })
             .FirstOrDefaultAsync();
 

@@ -33,7 +33,8 @@ namespace backend.Controllers
                 {
                     Id = u.sk_usuario_id,
                     Nombre = u.nombre_usuario,
-                    Correo = u.email_usuario
+                    Correo = u.email_usuario,
+                    RutaImagen = u.ruta_imagen
                 })
                 .ToListAsync();
         }
@@ -48,7 +49,8 @@ namespace backend.Controllers
                 {
                     Id = u.sk_usuario_id,
                     Nombre = u.nombre_usuario,
-                    Correo = u.email_usuario
+                    Correo = u.email_usuario,
+                    RutaImagen = u.ruta_imagen
                 })
                 .FirstOrDefaultAsync();
 
@@ -73,6 +75,7 @@ namespace backend.Controllers
 
             usuarioExistente.nombre_usuario = dto.Nombre;
             usuarioExistente.email_usuario = dto.Correo;
+            usuarioExistente.ruta_imagen = dto.RutaImagen;
 
             if (!string.IsNullOrWhiteSpace(dto.Contrasenia))
             {
@@ -117,7 +120,8 @@ namespace backend.Controllers
             var nuevoUsuario = new Usuario
             {
                 nombre_usuario = dto.Nombre,
-                email_usuario = dto.Correo
+                email_usuario = dto.Correo,
+                ruta_imagen = dto.RutaImagen
             };
 
             var hasher = new PasswordHasher<Usuario>();
@@ -133,7 +137,8 @@ namespace backend.Controllers
                 {
                     Id = nuevoUsuario.sk_usuario_id,
                     Nombre = nuevoUsuario.nombre_usuario,
-                    Correo = nuevoUsuario.email_usuario
+                    Correo = nuevoUsuario.email_usuario,
+                    RutaImagen = nuevoUsuario.ruta_imagen
                 }
             );
         }

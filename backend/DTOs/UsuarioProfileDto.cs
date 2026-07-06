@@ -12,5 +12,8 @@ namespace backend.DTOs
 
         [JsonPropertyName("correo")]
         public string? Correo { get; set; }
+
+        [JsonPropertyName("ruta_imagen")]
+        public string? RutaImagen { get; set; }
     }
 }

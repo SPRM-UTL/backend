@@ -7,5 +7,7 @@
         public string Correo { get; set; } = string.Empty;
 
         public string Contrasenia { get; set; } = string.Empty;
+
+        public string? RutaImagen { get; set; }
     }
 }

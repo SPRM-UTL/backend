@@ -17,6 +17,9 @@ namespace backend.Models
         [MaxLength(500)]
         public string? contrasenia { get; set; }
 
+        [MaxLength(500)]
+        public string? ruta_imagen { get; set; }
+
         [MaxLength(100)]
         public string? nombre_arduino{ get; set; }
 
