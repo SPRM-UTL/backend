@@ -276,6 +276,7 @@ public partial class PruebaaspContext : DbContext
             entity.Property(e => e.nombre_arduino).HasMaxLength(100).HasColumnName("nombre_arduino");
             entity.Property(e => e.mac_address_usuario).HasMaxLength(17).HasColumnName("mac_address_usuario");
             entity.Property(e => e.contrasenia).HasMaxLength(500).HasColumnName("contrasenia");
+            entity.Property(e => e.ruta_imagen).HasMaxLength(500).HasColumnName("ruta_imagen");
         });
 
         modelBuilder.Entity<HistorialActividad>(entity =>
