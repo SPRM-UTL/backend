@@ -645,6 +645,9 @@ public class AparatosController : ControllerBase
             SkHabitacionId = a.sk_habitacion_id,
             NombreHabitacion = a.Habitacion?.nombre_habitacion,
             EstadoEncendido = a.ConfiguracionRed?.estado_encendido,
+            EstadoEncendido2 = a.ConfiguracionRed?.estado_encendido_2,
+            EstadoEncendido3 = a.ConfiguracionRed?.estado_encendido_3,
+            EstadoEncendido4 = a.ConfiguracionRed?.estado_encendido_4,
             FechaEstadoActualizado = a.ConfiguracionRed?.fecha_estado_actualizado,
             ConectadoRed = conectado,
             IpAddress = a.ConfiguracionRed?.ip_address,
@@ -670,6 +673,9 @@ public class AparatosController : ControllerBase
         FechaCreacion = configuracion.fecha_creacion,
         FechaUltimaConexion = configuracion.fecha_ultima_conexion,
         EstadoEncendido = configuracion.estado_encendido,
+        EstadoEncendido2 = configuracion.estado_encendido_2,
+        EstadoEncendido3 = configuracion.estado_encendido_3,
+        EstadoEncendido4 = configuracion.estado_encendido_4,
         FechaEstadoActualizado = configuracion.fecha_estado_actualizado,
         OrigenEstado = configuracion.origen_estado
     };

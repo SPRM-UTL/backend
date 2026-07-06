@@ -53,6 +53,7 @@ using (var scope = app.Services.CreateScope())
     {
         EnsureEsp32Schema(db);
         EnsureConsumoSchema(db);
+        EnsureMultiSocketSchema(db);
     }
     catch (Exception ex)
     {
@@ -79,11 +80,14 @@ try
         if (!db.AparatoTipos.Any(t => t.nombre_tipo == "Sockets Inteligentes"))
             db.AparatoTipos.Add(new AparatoTipo { nombre_tipo = "Sockets Inteligentes", icono = "plug", es_asistente = false, soporta_wifi = true, soporta_bluetooth = true, orden = 4, palabras_clave_busqueda = "SOCKET,PLUG,SMARTPLUG" });
 
+        if (!db.AparatoTipos.Any(t => t.nombre_tipo == "MultiSocket"))
+            db.AparatoTipos.Add(new AparatoTipo { nombre_tipo = "MultiSocket", icono = "plug", es_asistente = false, soporta_wifi = true, soporta_bluetooth = true, requiere_vinculacion_bluetooth = false, orden = 5, palabras_clave_busqueda = "MULTISOCKET,MULTI SOCKET,REGLETA,POWERSTRIP,POWER STRIP,MULTIENCHUFE,CONTACTO,CONTACTOS,SOCKET,PLUG" });
+
         if (!db.AparatoTipos.Any(t => t.nombre_tipo == "Ventilador"))
-            db.AparatoTipos.Add(new AparatoTipo { nombre_tipo = "Ventilador", icono = "wind", es_asistente = false, soporta_wifi = true, soporta_bluetooth = true, requiere_vinculacion_bluetooth = false, orden = 5, palabras_clave_busqueda = "FAN,VENTILADOR" });
+            db.AparatoTipos.Add(new AparatoTipo { nombre_tipo = "Ventilador", icono = "wind", es_asistente = false, soporta_wifi = true, soporta_bluetooth = true, requiere_vinculacion_bluetooth = false, orden = 6, palabras_clave_busqueda = "FAN,VENTILADOR" });
 
         if (!db.AparatoTipos.Any(t => t.nombre_tipo == "Cámara"))
-            db.AparatoTipos.Add(new AparatoTipo { nombre_tipo = "Cámara", icono = "videocam", es_asistente = false, soporta_wifi = true, soporta_bluetooth = true, requiere_vinculacion_bluetooth = false, orden = 6, palabras_clave_busqueda = "CAM,CAMERA,CAMARA,WEBCAM,VIDEO" });
+            db.AparatoTipos.Add(new AparatoTipo { nombre_tipo = "Cámara", icono = "videocam", es_asistente = false, soporta_wifi = true, soporta_bluetooth = true, requiere_vinculacion_bluetooth = false, orden = 7, palabras_clave_busqueda = "CAM,CAMERA,CAMARA,WEBCAM,VIDEO" });
 
 
         // if (!db.AparatoTipos.Any(t => t.nombre_tipo == "Televisión"))
@@ -103,15 +107,25 @@ try
         // Actualizar iconos y métodos de configuración de aparatos existentes si no tienen
         var tipos = db.AparatoTipos.ToList();
         foreach (var tipo in tipos) {
+            var usaWifiBluetooth =
+                tipo.nombre_tipo == "Sockets Inteligentes" ||
+                tipo.nombre_tipo == "Enchufe" ||
+                tipo.nombre_tipo == "MultiSocket" ||
+                tipo.nombre_tipo == "Ventilador" ||
+                tipo.nombre_tipo == "Cámara";
+
             // Forzar configuración WiFi-only por defecto a los antiguos
-            if (tipo.nombre_tipo != "Sockets Inteligentes" && tipo.nombre_tipo != "Enchufe" && tipo.nombre_tipo != "Ventilador") {
+            if (!usaWifiBluetooth) {
                 tipo.soporta_bluetooth = false;
                 tipo.soporta_wifi = true;
             } else {
                 tipo.soporta_bluetooth = true;
                 tipo.soporta_wifi = true;
                 
-                if (tipo.nombre_tipo == "Enchufe" || tipo.nombre_tipo == "Ventilador" || tipo.nombre_tipo == "Cámara") {
+                if (tipo.nombre_tipo == "Enchufe" ||
+                    tipo.nombre_tipo == "MultiSocket" ||
+                    tipo.nombre_tipo == "Ventilador" ||
+                    tipo.nombre_tipo == "Cámara") {
                     tipo.requiere_vinculacion_bluetooth = false;
                 }
             }
@@ -122,8 +136,9 @@ try
                     // case "Focos": tipo.icono = "lightbulb"; tipo.orden = 2; break;
                     case "Enchufe": tipo.icono = "plug"; tipo.orden = 3; break;
                     case "Sockets Inteligentes": tipo.icono = "plug"; tipo.orden = 4; break;
-                    case "Ventilador": tipo.icono = "wind"; tipo.orden = 5; break;
-                    case "Cámara": tipo.icono = "videocam"; tipo.orden = 6; break;
+                    case "MultiSocket": tipo.icono = "plug"; tipo.orden = 5; break;
+                    case "Ventilador": tipo.icono = "wind"; tipo.orden = 6; break;
+                    case "Cámara": tipo.icono = "videocam"; tipo.orden = 7; break;
                     // case "Televisión": tipo.icono = "tv_minimal"; tipo.orden = 6; break;
                     // case "Bocinas": tipo.icono = "speaker"; tipo.orden = 7; break;
                     // case "Audífonos": tipo.icono = "headphones"; tipo.orden = 8; break;
@@ -148,6 +163,8 @@ if (!app.Environment.IsDevelopment())
 app.UseWhen(
     context => !context.Request.Path.StartsWithSegments("/ws"),
     branch => branch.UseHttpsRedirection());
+
+app.UseStaticFiles();
 app.UseRouting();
 
 app.UseCors("AngularPolicy");
@@ -310,6 +327,41 @@ static void EnsureConsumoSchema(PruebaaspContext db)
             db.Database.ExecuteSqlRaw("""
                 INSERT INTO `__EFMigrationsHistory` (`MigrationId`, `ProductVersion`)
                 VALUES ('20260702183000_AddConsumoHistorico', '9.0.16');
+                """);
+        }
+    }
+    finally
+    {
+        db.Database.CloseConnection();
+    }
+}
+
+static void EnsureMultiSocketSchema(PruebaaspContext db)
+{
+    db.Database.OpenConnection();
+    try
+    {
+        if (!ColumnExists(db, "aparato_configuracion_red", "estado_encendido_2"))
+        {
+            db.Database.ExecuteSqlRaw("""
+                ALTER TABLE `aparato_configuracion_red`
+                ADD COLUMN `estado_encendido_2` tinyint(1) NULL;
+                """);
+        }
+
+        if (!ColumnExists(db, "aparato_configuracion_red", "estado_encendido_3"))
+        {
+            db.Database.ExecuteSqlRaw("""
+                ALTER TABLE `aparato_configuracion_red`
+                ADD COLUMN `estado_encendido_3` tinyint(1) NULL;
+                """);
+        }
+
+        if (!ColumnExists(db, "aparato_configuracion_red", "estado_encendido_4"))
+        {
+            db.Database.ExecuteSqlRaw("""
+                ALTER TABLE `aparato_configuracion_red`
+                ADD COLUMN `estado_encendido_4` tinyint(1) NULL;
                 """);
         }
     }

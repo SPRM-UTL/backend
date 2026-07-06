@@ -40,6 +40,15 @@ namespace backend.DTOs
         [JsonPropertyName("estado_encendido")]
         public bool? EstadoEncendido { get; set; }
 
+        [JsonPropertyName("estado_encendido_2")]
+        public bool? EstadoEncendido2 { get; set; }
+
+        [JsonPropertyName("estado_encendido_3")]
+        public bool? EstadoEncendido3 { get; set; }
+
+        [JsonPropertyName("estado_encendido_4")]
+        public bool? EstadoEncendido4 { get; set; }
+
         [JsonPropertyName("conectado_red")]
         public bool? ConectadoRed { get; set; }
 

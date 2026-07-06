@@ -44,10 +44,20 @@ namespace backend.Services
             await db.SaveChangesAsync(cancellationToken);
         }
 
+        public Task<bool?> UpdatePowerStateAsync(
+            int configuracionRedId,
+            bool encendido,
+            string origen,
+            CancellationToken cancellationToken = default)
+        {
+            return UpdatePowerStateAsync(configuracionRedId, encendido, origen, 1, cancellationToken);
+        }
+
         public async Task<bool?> UpdatePowerStateAsync(
             int configuracionRedId,
             bool encendido,
             string origen,
+            int contacto,
             CancellationToken cancellationToken = default)
         {
             await using var scope = _scopeFactory.CreateAsyncScope();
@@ -61,9 +71,7 @@ namespace backend.Services
                 return null;
             }
 
-            config.estado_encendido = encendido;
-            config.fecha_estado_actualizado = DateTime.UtcNow;
-            config.origen_estado = origen;
+            ApplyOutletState(config, contacto, encendido, DateTime.UtcNow, origen);
             await db.SaveChangesAsync(cancellationToken);
             return encendido;
         }
@@ -141,6 +149,63 @@ namespace backend.Services
             return null;
         }
 
+        public bool TryParseOutletCommand(string message, out int contacto, out bool encendido)
+        {
+            contacto = 0;
+            encendido = false;
+
+            if (string.IsNullOrWhiteSpace(message))
+            {
+                return false;
+            }
+
+            var trimmed = message.Trim();
+            if (TryParseOutletTextCommand(trimmed, out contacto, out encendido))
+            {
+                return true;
+            }
+
+            if (!trimmed.StartsWith('{'))
+            {
+                return false;
+            }
+
+            try
+            {
+                using var doc = JsonDocument.Parse(trimmed);
+                var root = doc.RootElement;
+
+                if (root.TryGetProperty("comando", out var comandoProp) &&
+                    comandoProp.ValueKind == JsonValueKind.String &&
+                    TryParseOutletTextCommand(comandoProp.GetString(), out contacto, out encendido))
+                {
+                    return true;
+                }
+
+                if (root.TryGetProperty("command", out var commandProp) &&
+                    commandProp.ValueKind == JsonValueKind.String &&
+                    TryParseOutletTextCommand(commandProp.GetString(), out contacto, out encendido))
+                {
+                    return true;
+                }
+
+                var contactoJson = ReadInt(root, "contacto", "outlet", "relay", "rele");
+                var estadoJson = ReadBoolean(root, "encendido", "estado", "value");
+                if (contactoJson is >= 1 and <= 4 && estadoJson.HasValue)
+                {
+                    contacto = contactoJson.Value;
+                    encendido = estadoJson.Value;
+                    return true;
+                }
+            }
+            catch (JsonException ex)
+            {
+                _logger.LogDebug(ex, "Mensaje ESP32 no es JSON de comando MultiSocket válido.");
+            }
+
+            return false;
+        }
+
         public async Task ProcessInboundMessageAsync(
             int configuracionRedId,
             string message,
@@ -164,7 +229,12 @@ namespace backend.Services
                 cancellationToken: cancellationToken);
 
             var powerState = TryParsePowerState(message);
-            if (powerState.HasValue)
+            if (TryParseOutletCommand(message, out var contacto, out var outletState))
+            {
+                var origen = message.TrimStart().StartsWith('{') ? "esp32_json" : "esp32_ack";
+                await UpdatePowerStateAsync(configuracionRedId, outletState, origen, contacto, cancellationToken);
+            }
+            else if (powerState.HasValue)
             {
                 var origen = message.TrimStart().StartsWith('{') ? "esp32_json" : "esp32_ack";
                 await UpdatePowerStateAsync(configuracionRedId, powerState.Value, origen, cancellationToken);
@@ -178,11 +248,13 @@ namespace backend.Services
             string origen,
             CancellationToken cancellationToken = default)
         {
+            var hasOutletCommand = TryParseOutletCommand(comando, out var contacto, out var outletState);
             var payload = new
             {
                 @event = "command",
                 comando,
-                estado = estadoEncendido,
+                estado = hasOutletCommand ? outletState : estadoEncendido,
+                contacto = hasOutletCommand ? contacto : (int?)null,
                 origen,
                 fecha = DateTime.UtcNow
             };
@@ -194,7 +266,11 @@ namespace backend.Services
                 comando: comando,
                 cancellationToken: cancellationToken);
 
-            if (estadoEncendido.HasValue)
+            if (hasOutletCommand)
+            {
+                await UpdatePowerStateAsync(configuracionRedId, outletState, origen, contacto, cancellationToken);
+            }
+            else if (estadoEncendido.HasValue)
             {
                 await UpdatePowerStateAsync(configuracionRedId, estadoEncendido.Value, origen, cancellationToken);
             }
@@ -224,9 +300,22 @@ namespace backend.Services
 
             if (telemetry.EstadoEncendido.HasValue)
             {
-                config.estado_encendido = telemetry.EstadoEncendido;
-                config.fecha_estado_actualizado = fechaMedicion;
-                config.origen_estado = "esp32_telemetry";
+                ApplyOutletState(config, 1, telemetry.EstadoEncendido.Value, fechaMedicion, "esp32_telemetry");
+            }
+
+            if (telemetry.EstadoEncendido2.HasValue)
+            {
+                ApplyOutletState(config, 2, telemetry.EstadoEncendido2.Value, fechaMedicion, "esp32_telemetry");
+            }
+
+            if (telemetry.EstadoEncendido3.HasValue)
+            {
+                ApplyOutletState(config, 3, telemetry.EstadoEncendido3.Value, fechaMedicion, "esp32_telemetry");
+            }
+
+            if (telemetry.EstadoEncendido4.HasValue)
+            {
+                ApplyOutletState(config, 4, telemetry.EstadoEncendido4.Value, fechaMedicion, "esp32_telemetry");
             }
 
             db.AparatoConsumoHistoricos.Add(new AparatoConsumoHistorico
@@ -277,7 +366,10 @@ namespace backend.Services
                     CorrienteA = ReadDecimal(root, "corriente"),
                     PotenciaW = ReadDecimal(root, "potencia"),
                     EnergiaWh = ReadDecimal(root, "energia"),
-                    EstadoEncendido = TryParsePowerState(message)
+                    EstadoEncendido = ReadBoolean(root, "estado1", "encendido1", "rele1") ?? TryParsePowerState(message),
+                    EstadoEncendido2 = ReadBoolean(root, "estado2", "encendido2", "rele2"),
+                    EstadoEncendido3 = ReadBoolean(root, "estado3", "encendido3", "rele3"),
+                    EstadoEncendido4 = ReadBoolean(root, "estado4", "encendido4", "rele4")
                 };
 
                 return true;
@@ -304,12 +396,158 @@ namespace backend.Services
             };
         }
 
+        private static bool? ReadBoolean(JsonElement root, params string[] propertyNames)
+        {
+            foreach (var propertyName in propertyNames)
+            {
+                if (root.TryGetProperty(propertyName, out var value))
+                {
+                    var parsed = ReadBoolean(value);
+                    if (parsed.HasValue)
+                    {
+                        return parsed;
+                    }
+                }
+            }
+
+            return null;
+        }
+
+        private static bool? ReadBoolean(JsonElement value)
+        {
+            return value.ValueKind switch
+            {
+                JsonValueKind.True => true,
+                JsonValueKind.False => false,
+                JsonValueKind.Number when value.TryGetInt32(out var number) => number != 0,
+                JsonValueKind.String => ParseBooleanText(value.GetString()),
+                _ => null
+            };
+        }
+
+        private static bool? ParseBooleanText(string? value)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                return null;
+            }
+
+            var normalized = value.Trim();
+            if (normalized.Equals("ON", StringComparison.OrdinalIgnoreCase) ||
+                normalized.Equals("true", StringComparison.OrdinalIgnoreCase) ||
+                normalized.Equals("1", StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+
+            if (normalized.Equals("OFF", StringComparison.OrdinalIgnoreCase) ||
+                normalized.Equals("false", StringComparison.OrdinalIgnoreCase) ||
+                normalized.Equals("0", StringComparison.OrdinalIgnoreCase))
+            {
+                return false;
+            }
+
+            return null;
+        }
+
+        private static int? ReadInt(JsonElement root, params string[] propertyNames)
+        {
+            foreach (var propertyName in propertyNames)
+            {
+                if (!root.TryGetProperty(propertyName, out var value))
+                {
+                    continue;
+                }
+
+                if (value.ValueKind == JsonValueKind.Number && value.TryGetInt32(out var number))
+                {
+                    return number;
+                }
+
+                if (value.ValueKind == JsonValueKind.String && int.TryParse(value.GetString(), out var parsed))
+                {
+                    return parsed;
+                }
+            }
+
+            return null;
+        }
+
         public sealed class TelemetryReading
         {
             public decimal CorrienteA { get; init; }
             public decimal PotenciaW { get; init; }
             public decimal EnergiaWh { get; init; }
             public bool? EstadoEncendido { get; init; }
+            public bool? EstadoEncendido2 { get; init; }
+            public bool? EstadoEncendido3 { get; init; }
+            public bool? EstadoEncendido4 { get; init; }
+        }
+
+        private static void ApplyOutletState(
+            AparatoConfiguracionRed config,
+            int contacto,
+            bool encendido,
+            DateTime fecha,
+            string origen)
+        {
+            switch (contacto)
+            {
+                case 1:
+                    config.estado_encendido = encendido;
+                    break;
+                case 2:
+                    config.estado_encendido_2 = encendido;
+                    break;
+                case 3:
+                    config.estado_encendido_3 = encendido;
+                    break;
+                case 4:
+                    config.estado_encendido_4 = encendido;
+                    break;
+                default:
+                    return;
+            }
+
+            config.fecha_estado_actualizado = fecha;
+            config.origen_estado = origen;
+        }
+
+        private static bool TryParseOutletTextCommand(string? command, out int contacto, out bool encendido)
+        {
+            contacto = 0;
+            encendido = false;
+
+            if (string.IsNullOrWhiteSpace(command))
+            {
+                return false;
+            }
+
+            var normalized = command.Trim()
+                .Replace(" ", string.Empty)
+                .Replace("_", string.Empty)
+                .Replace("-", string.Empty)
+                .ToUpperInvariant();
+
+            if (normalized.Length == 3 &&
+                normalized.StartsWith("ON", StringComparison.Ordinal) &&
+                int.TryParse(normalized[2].ToString(), out contacto) &&
+                contacto is >= 1 and <= 4)
+            {
+                encendido = true;
+                return true;
+            }
+
+            if (normalized.Length == 4 &&
+                normalized.StartsWith("OFF", StringComparison.Ordinal) &&
+                int.TryParse(normalized[3].ToString(), out contacto) &&
+                contacto is >= 1 and <= 4)
+            {
+                encendido = false;
+                return true;
+            }
+
+            return false;
         }
 
         private static string? ExtractComando(string message)

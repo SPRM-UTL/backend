@@ -23,6 +23,14 @@ namespace backend.Controllers
             _context = context;
         }
 
+        private const long MaxProfileImageBytes = 5 * 1024 * 1024;
+        private static readonly HashSet<string> AllowedProfileImageExtensions = new(StringComparer.OrdinalIgnoreCase)
+        {
+            ".jpg",
+            ".jpeg",
+            ".png"
+        };
+
         // GET: api/UsuariosApi
         [HttpGet]
         public async Task<ActionResult<IEnumerable<UsuarioProfileDto>>> GetUsuarios()
@@ -75,7 +83,10 @@ namespace backend.Controllers
 
             usuarioExistente.nombre_usuario = dto.Nombre;
             usuarioExistente.email_usuario = dto.Correo;
-            usuarioExistente.ruta_imagen = dto.RutaImagen;
+            if (dto.RutaImagen != null)
+            {
+                usuarioExistente.ruta_imagen = dto.RutaImagen;
+            }
 
             if (!string.IsNullOrWhiteSpace(dto.Contrasenia))
             {
@@ -141,6 +152,72 @@ namespace backend.Controllers
                     RutaImagen = nuevoUsuario.ruta_imagen
                 }
             );
+        }
+
+        [HttpPost("perfil/imagen")]
+        [HttpPost("/api/UsuariosDimension/perfil/imagen")]
+        [RequestSizeLimit(MaxProfileImageBytes)]
+        public async Task<ActionResult> UploadProfileImage(
+            [FromForm(Name = "imagen")] IFormFile? imagen,
+            [FromForm] int? usuarioId)
+        {
+            if (imagen == null || imagen.Length == 0)
+            {
+                return BadRequest("Selecciona una imagen válida.");
+            }
+
+            if (imagen.Length > MaxProfileImageBytes)
+            {
+                return BadRequest("La imagen no debe exceder 5 MB.");
+            }
+
+            var extension = Path.GetExtension(imagen.FileName);
+            if (string.IsNullOrWhiteSpace(extension) || !AllowedProfileImageExtensions.Contains(extension))
+            {
+                return BadRequest("Solo se permiten imágenes JPG o PNG.");
+            }
+
+            if (imagen.ContentType == null || !imagen.ContentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase))
+            {
+                return BadRequest("El archivo enviado no parece ser una imagen.");
+            }
+
+            var userIdFromToken = HttpContext.Items["UsuarioId"] as int?;
+            var targetUserId = userIdFromToken ?? usuarioId;
+            if (targetUserId == null || targetUserId <= 0)
+            {
+                return BadRequest("No se pudo identificar al usuario.");
+            }
+
+            var usuario = await _context.Usuarios.FindAsync(targetUserId.Value);
+            if (usuario == null)
+            {
+                return NotFound("Usuario no encontrado.");
+            }
+
+            var webRootPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot");
+            var uploadDirectory = Path.Combine(webRootPath, "uploads", "perfiles", targetUserId.Value.ToString());
+            Directory.CreateDirectory(uploadDirectory);
+
+            var safeExtension = extension.Equals(".png", StringComparison.OrdinalIgnoreCase) ? ".png" : ".jpg";
+            var fileName = $"perfil-{Guid.NewGuid():N}{safeExtension}";
+            var filePath = Path.Combine(uploadDirectory, fileName);
+
+            await using (var stream = System.IO.File.Create(filePath))
+            {
+                await imagen.CopyToAsync(stream);
+            }
+
+            var relativePath = $"/uploads/perfiles/{targetUserId.Value}/{fileName}";
+            usuario.ruta_imagen = relativePath;
+            await _context.SaveChangesAsync();
+
+            var absoluteUrl = $"{Request.Scheme}://{Request.Host}{relativePath}";
+            return Ok(new
+            {
+                ruta_imagen = relativePath,
+                url_imagen = absoluteUrl
+            });
         }
 
         // DELETE: api/UsuariosApi/5

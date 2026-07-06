@@ -157,6 +157,9 @@ public partial class PruebaaspContext : DbContext
             entity.Property(e => e.fecha_creacion).HasColumnName("fecha_creacion");
             entity.Property(e => e.fecha_ultima_conexion).HasColumnName("fecha_ultima_conexion");
             entity.Property(e => e.estado_encendido).HasColumnName("estado_encendido");
+            entity.Property(e => e.estado_encendido_2).HasColumnName("estado_encendido_2");
+            entity.Property(e => e.estado_encendido_3).HasColumnName("estado_encendido_3");
+            entity.Property(e => e.estado_encendido_4).HasColumnName("estado_encendido_4");
             entity.Property(e => e.fecha_estado_actualizado).HasColumnName("fecha_estado_actualizado");
             entity.Property(e => e.origen_estado).HasMaxLength(20).HasColumnName("origen_estado");
             entity.Property(e => e.corriente_actual).HasColumnName("corriente_actual");

@@ -63,6 +63,8 @@ namespace backend.Services
                                 idTipo = tipoDb.sk_aparato_tipo_id;
                                 if (tipoAparato == "Cámara") {
                                     nombreAparato = "Cámara ESP32";
+                                } else if (tipoAparato == "MultiSocket") {
+                                    nombreAparato = "MultiSocket ESP32";
                                 }
                             }
                         }

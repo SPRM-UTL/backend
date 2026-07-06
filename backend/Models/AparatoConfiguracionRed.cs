@@ -39,6 +39,12 @@ namespace backend.Models
 
         public bool? estado_encendido { get; set; }
 
+        public bool? estado_encendido_2 { get; set; }
+
+        public bool? estado_encendido_3 { get; set; }
+
+        public bool? estado_encendido_4 { get; set; }
+
         public DateTime? fecha_estado_actualizado { get; set; }
 
         [MaxLength(20)]

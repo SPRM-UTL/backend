@@ -121,11 +121,16 @@ namespace backend.Controllers
                     cancellationToken);
             }
 
+            var contactoComando = _stateService.TryParseOutletCommand(comando, out var contacto, out _)
+                ? contacto
+                : (int?)null;
+
             return Ok(new
             {
                 deviceKey,
                 comando,
-                estado_encendido = _stateService.TryParsePowerState(comando)
+                estado_encendido = _stateService.TryParsePowerState(comando),
+                contacto = contactoComando
             });
         }
 
@@ -147,6 +152,9 @@ namespace backend.Controllers
             {
                 connected = isConnected,
                 estado_encendido = config?.estado_encendido,
+                estado_encendido_2 = config?.estado_encendido_2,
+                estado_encendido_3 = config?.estado_encendido_3,
+                estado_encendido_4 = config?.estado_encendido_4,
                 fecha_estado_actualizado = config?.fecha_estado_actualizado,
                 origen_estado = config?.origen_estado,
                 corriente_a = config?.corriente_actual,
@@ -183,6 +191,9 @@ namespace backend.Controllers
                 sk_aparato_id,
                 device_key = config.device_key,
                 estado_encendido = config.estado_encendido,
+                estado_encendido_2 = config.estado_encendido_2,
+                estado_encendido_3 = config.estado_encendido_3,
+                estado_encendido_4 = config.estado_encendido_4,
                 conectado,
                 fecha_estado_actualizado = config.fecha_estado_actualizado,
                 origen_estado = config.origen_estado,
@@ -230,6 +241,62 @@ namespace backend.Controllers
                 success = true,
                 comando,
                 estado_encendido = estado,
+                estado_encendido_2 = config.estado_encendido_2,
+                estado_encendido_3 = config.estado_encendido_3,
+                estado_encendido_4 = config.estado_encendido_4,
+                fecha_estado_actualizado = DateTime.UtcNow
+            });
+        }
+
+        [HttpPost("toggle/{sk_aparato_id}/contacto/{contacto:int}")]
+        public async Task<IActionResult> ToggleAparatoContacto(
+            int sk_aparato_id,
+            int contacto,
+            [FromQuery] bool estado,
+            [FromServices] PruebaaspContext context,
+            CancellationToken cancellationToken)
+        {
+            if (contacto is < 1 or > 4)
+            {
+                return BadRequest("El contacto debe estar entre 1 y 4.");
+            }
+
+            var config = await context.AparatoConfiguracionesRed
+                .FirstOrDefaultAsync(c => c.sk_aparato_id == sk_aparato_id, cancellationToken);
+            if (config == null || string.IsNullOrWhiteSpace(config.device_key))
+            {
+                return NotFound("El aparato no tiene configuración de red o deviceKey.");
+            }
+
+            if (!_connections.TryGetOpenSocket(config.device_key, out var socket))
+            {
+                return BadRequest("El dispositivo no está conectado actualmente.");
+            }
+
+            var comando = $"{(estado ? "ON" : "OFF")}{contacto}";
+            await socket!.SendAsync(
+                Encoding.UTF8.GetBytes(comando),
+                WebSocketMessageType.Text,
+                true,
+                cancellationToken);
+
+            await _stateService.ProcessOutboundCommandAsync(
+                config.sk_aparato_configuracion_red_id,
+                comando,
+                estado,
+                $"toggle_contacto_{contacto}",
+                cancellationToken);
+
+            return Ok(new
+            {
+                success = true,
+                comando,
+                contacto,
+                estado,
+                estado_encendido = contacto == 1 ? estado : config.estado_encendido,
+                estado_encendido_2 = contacto == 2 ? estado : config.estado_encendido_2,
+                estado_encendido_3 = contacto == 3 ? estado : config.estado_encendido_3,
+                estado_encendido_4 = contacto == 4 ? estado : config.estado_encendido_4,
                 fecha_estado_actualizado = DateTime.UtcNow
             });
         }
