@@ -38,5 +38,8 @@ namespace backend.Models
         [ForeignKey("sk_usuario_id")]
         [JsonIgnore]
         public Usuario? Usuario { get; set; }
+
+        [JsonIgnore]
+        public virtual ICollection<GestoPaso> PasosSecuencia { get; set; } = new List<GestoPaso>();
     }
 }

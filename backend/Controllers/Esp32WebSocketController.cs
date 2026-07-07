@@ -208,10 +208,14 @@ namespace backend.Controllers
         public async Task<IActionResult> ToggleAparato(
             int sk_aparato_id, 
             [FromQuery] bool estado,
+            [FromQuery] int? sk_gesto_id,
             [FromServices] PruebaaspContext context,
             CancellationToken cancellationToken)
         {
-            var config = context.AparatoConfiguracionesRed.FirstOrDefault(c => c.sk_aparato_id == sk_aparato_id);
+            var config = context.AparatoConfiguracionesRed
+                .Include(c => c.Aparato)
+                .FirstOrDefault(c => c.sk_aparato_id == sk_aparato_id);
+                
             if (config == null || string.IsNullOrWhiteSpace(config.device_key))
             {
                 return NotFound("El aparato no tiene configuración de red o deviceKey.");
@@ -235,6 +239,46 @@ namespace backend.Controllers
                 estado,
                 "toggle",
                 cancellationToken);
+                
+            // === GUARDAR HISTORIAL DE ACTIVIDAD ===
+            try
+            {
+                var now = DateTime.UtcNow;
+                var nowOnly = DateOnly.FromDateTime(now);
+                var tiempo = context.Tiempos.FirstOrDefault(t => t.fecha_completa == nowOnly && t.hora_periodo == now.Hour);
+                if (tiempo == null)
+                {
+                    tiempo = new backend.Models.Tiempo {
+                        fecha_completa = nowOnly,
+                        anio = now.Year,
+                        mes_numero = now.Month,
+                        mes_nombre = now.ToString("MMMM"),
+                        dia_semana_nombre = now.ToString("dddd"),
+                        hora_periodo = now.Hour
+                    };
+                    context.Tiempos.Add(tiempo);
+                    context.SaveChanges();
+                }
+
+                // 1 es un ID de gesto por defecto si no se manda uno (ej. Toggle Manual)
+                int gestoIdToSave = sk_gesto_id ?? 1; 
+
+                var historial = new backend.Models.HistorialActividad {
+                    sk_usuario_id = config.Aparato?.sk_usuario_id ?? 1,
+                    sk_gesto_id = gestoIdToSave,
+                    sk_aparato_id = sk_aparato_id,
+                    sk_tiempo_id = tiempo.sk_tiempo_id,
+                    confianza_ia = 1.00m,
+                    tiempo_respuesta = 50,
+                    ejecucion_exitosa = true
+                };
+                context.HistorialActividades.Add(historial);
+                await context.SaveChangesAsync(cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error al guardar el historial de actividad: {ex.Message}");
+            }
 
             return Ok(new
             {
@@ -253,6 +297,7 @@ namespace backend.Controllers
             int sk_aparato_id,
             int contacto,
             [FromQuery] bool estado,
+            [FromQuery] int? sk_gesto_id,
             [FromServices] PruebaaspContext context,
             CancellationToken cancellationToken)
         {
@@ -261,8 +306,9 @@ namespace backend.Controllers
                 return BadRequest("El contacto debe estar entre 1 y 4.");
             }
 
-            var config = await context.AparatoConfiguracionesRed
-                .FirstOrDefaultAsync(c => c.sk_aparato_id == sk_aparato_id, cancellationToken);
+            var config = context.AparatoConfiguracionesRed
+                .Include(c => c.Aparato)
+                .FirstOrDefault(c => c.sk_aparato_id == sk_aparato_id);
             if (config == null || string.IsNullOrWhiteSpace(config.device_key))
             {
                 return NotFound("El aparato no tiene configuración de red o deviceKey.");
@@ -273,7 +319,9 @@ namespace backend.Controllers
                 return BadRequest("El dispositivo no está conectado actualmente.");
             }
 
-            var comando = $"{(estado ? "ON" : "OFF")}{contacto}";
+            string estadoStr = estado ? "ON" : "OFF";
+            string comando = $"C{contacto}_{estadoStr}";
+
             await socket!.SendAsync(
                 Encoding.UTF8.GetBytes(comando),
                 WebSocketMessageType.Text,
@@ -284,19 +332,55 @@ namespace backend.Controllers
                 config.sk_aparato_configuracion_red_id,
                 comando,
                 estado,
-                $"toggle_contacto_{contacto}",
+                "toggle",
                 cancellationToken);
+                
+            // === GUARDAR HISTORIAL DE ACTIVIDAD ===
+            try
+            {
+                var now = DateTime.UtcNow;
+                var nowOnly = DateOnly.FromDateTime(now);
+                var tiempo = context.Tiempos.FirstOrDefault(t => t.fecha_completa == nowOnly && t.hora_periodo == now.Hour);
+                if (tiempo == null)
+                {
+                    tiempo = new backend.Models.Tiempo {
+                        fecha_completa = nowOnly,
+                        anio = now.Year,
+                        mes_numero = now.Month,
+                        mes_nombre = now.ToString("MMMM"),
+                        dia_semana_nombre = now.ToString("dddd"),
+                        hora_periodo = now.Hour
+                    };
+                    context.Tiempos.Add(tiempo);
+                    context.SaveChanges();
+                }
+
+                // 1 es un ID de gesto por defecto si no se manda uno (ej. Toggle Manual)
+                int gestoIdToSave = sk_gesto_id ?? 1; 
+
+                var historial = new backend.Models.HistorialActividad {
+                    sk_usuario_id = config.Aparato?.sk_usuario_id ?? 1,
+                    sk_gesto_id = gestoIdToSave,
+                    sk_aparato_id = sk_aparato_id,
+                    sk_tiempo_id = tiempo.sk_tiempo_id,
+                    confianza_ia = 1.00m,
+                    tiempo_respuesta = 50,
+                    ejecucion_exitosa = true
+                };
+                context.HistorialActividades.Add(historial);
+                await context.SaveChangesAsync(cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error al guardar el historial de actividad: {ex.Message}");
+            }
 
             return Ok(new
             {
                 success = true,
                 comando,
                 contacto,
-                estado,
-                estado_encendido = contacto == 1 ? estado : config.estado_encendido,
-                estado_encendido_2 = contacto == 2 ? estado : config.estado_encendido_2,
-                estado_encendido_3 = contacto == 3 ? estado : config.estado_encendido_3,
-                estado_encendido_4 = contacto == 4 ? estado : config.estado_encendido_4,
+                estado_encendido = estado,
                 fecha_estado_actualizado = DateTime.UtcNow
             });
         }

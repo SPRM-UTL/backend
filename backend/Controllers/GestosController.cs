@@ -57,7 +57,16 @@ public class GestosController : ControllerBase
                 IdentificadorIa = g.identificador_ia,
                 NivelConfianzaMinimo = g.nivel_confianza_minimo,
                 TipoDisparadorNombre = g.tipo_disparador_nombre,
-                SkAparatoId = g.sk_aparato_id
+                SkAparatoId = g.sk_aparato_id,
+                Pasos = g.PasosSecuencia.Select(p => new GestoPasoDto
+                {
+                    SkGestoPasoId = p.sk_gesto_paso_id,
+                    Orden = p.orden,
+                    EsActivador = p.es_activador,
+                    NombreGesto = p.nombre_gesto,
+                    ManoObjetivo = p.mano_objetivo,
+                    CuadrosRequeridos = p.cuadros_requeridos
+                }).OrderBy(p => p.Orden).ToList()
             })
             .ToListAsync();
     }
@@ -78,7 +87,16 @@ public class GestosController : ControllerBase
                 IdentificadorIa = g.identificador_ia,
                 NivelConfianzaMinimo = g.nivel_confianza_minimo,
                 TipoDisparadorNombre = g.tipo_disparador_nombre,
-                SkAparatoId = g.sk_aparato_id
+                SkAparatoId = g.sk_aparato_id,
+                Pasos = g.PasosSecuencia.Select(p => new GestoPasoDto
+                {
+                    SkGestoPasoId = p.sk_gesto_paso_id,
+                    Orden = p.orden,
+                    EsActivador = p.es_activador,
+                    NombreGesto = p.nombre_gesto,
+                    ManoObjetivo = p.mano_objetivo,
+                    CuadrosRequeridos = p.cuadros_requeridos
+                }).OrderBy(p => p.Orden).ToList()
             })
             .FirstOrDefaultAsync();
 
@@ -100,13 +118,17 @@ public class GestosController : ControllerBase
             return BadRequest();
         }
 
-        if (!GestosValidos.Contains(dto.NombreGesto))
+        bool isCombo = dto.TipoDisparadorNombre != null && 
+                       (dto.TipoDisparadorNombre.ToUpper() == "COMBO" || dto.TipoDisparadorNombre.ToUpper() == "SECUENCIA");
+
+        if (!isCombo && !GestosValidos.Contains(dto.NombreGesto))
         {
             return BadRequest("Gesto no reconocido. Debe seleccionar un gesto válido.");
         }
 
         var usuarioId = (int?)HttpContext.Items["UsuarioId"];
         var gesto = await _context.Gestos
+            .Include(g => g.PasosSecuencia)
             .FirstOrDefaultAsync(g => g.sk_gesto_id == sk_gesto_id && g.sk_usuario_id == usuarioId);
 
         if (gesto == null)
@@ -115,6 +137,23 @@ public class GestosController : ControllerBase
         }
 
         ApplyDto(gesto, dto);
+
+        if (gesto.PasosSecuencia != null)
+        {
+            _context.GestoPasos.RemoveRange(gesto.PasosSecuencia);
+        }
+        
+        if (dto.Pasos != null && dto.Pasos.Any())
+        {
+            gesto.PasosSecuencia = dto.Pasos.Select(p => new GestoPaso
+            {
+                orden = p.Orden,
+                es_activador = p.EsActivador,
+                nombre_gesto = p.NombreGesto,
+                mano_objetivo = p.ManoObjetivo,
+                cuadros_requeridos = p.CuadrosRequeridos
+            }).ToList();
+        }
 
         try
         {
@@ -140,7 +179,10 @@ public class GestosController : ControllerBase
     [HttpPost]
     public async Task<ActionResult<GestoDto>> PostGesto(GestoDto dto)
     {
-        if (!GestosValidos.Contains(dto.NombreGesto))
+        bool isCombo = dto.TipoDisparadorNombre != null && 
+                       (dto.TipoDisparadorNombre.ToUpper() == "COMBO" || dto.TipoDisparadorNombre.ToUpper() == "SECUENCIA");
+
+        if (!isCombo && !GestosValidos.Contains(dto.NombreGesto))
         {
             return BadRequest("Gesto no reconocido. Debe seleccionar un gesto válido.");
         }
@@ -148,6 +190,18 @@ public class GestosController : ControllerBase
         var usuarioId = (int?)HttpContext.Items["UsuarioId"];
         var gesto = new Gesto { sk_usuario_id = usuarioId };
         ApplyDto(gesto, dto);
+
+        if (dto.Pasos != null && dto.Pasos.Any())
+        {
+            gesto.PasosSecuencia = dto.Pasos.Select(p => new GestoPaso
+            {
+                orden = p.Orden,
+                es_activador = p.EsActivador,
+                nombre_gesto = p.NombreGesto,
+                mano_objetivo = p.ManoObjetivo,
+                cuadros_requeridos = p.CuadrosRequeridos
+            }).ToList();
+        }
 
         _context.Gestos.Add(gesto);
         await _context.SaveChangesAsync();
@@ -285,7 +339,16 @@ public class GestosController : ControllerBase
         IdentificadorIa = gesto.identificador_ia,
         NivelConfianzaMinimo = gesto.nivel_confianza_minimo,
         TipoDisparadorNombre = gesto.tipo_disparador_nombre,
-        SkAparatoId = gesto.sk_aparato_id
+        SkAparatoId = gesto.sk_aparato_id,
+        Pasos = gesto.PasosSecuencia?.Select(p => new GestoPasoDto
+        {
+            SkGestoPasoId = p.sk_gesto_paso_id,
+            Orden = p.orden,
+            EsActivador = p.es_activador,
+            NombreGesto = p.nombre_gesto,
+            ManoObjetivo = p.mano_objetivo,
+            CuadrosRequeridos = p.cuadros_requeridos
+        }).OrderBy(p => p.Orden).ToList()
     };
 
     private static void ApplyDto(Gesto gesto, GestoDto dto)
