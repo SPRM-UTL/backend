@@ -192,6 +192,9 @@ static void EnsureEsp32Schema(PruebaaspContext db)
     db.Database.OpenConnection();
     try
     {
+        db.Database.ExecuteSqlRaw("ALTER TABLE `gesto_paso` ENGINE=InnoDB;");
+        db.Database.ExecuteSqlRaw("ALTER TABLE `gesto` ENGINE=InnoDB;");
+
         if (!ColumnExists(db, "aparato_configuracion_red", "estado_encendido"))
         {
             db.Database.ExecuteSqlRaw("""

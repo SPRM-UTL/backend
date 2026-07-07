@@ -1,4 +1,4 @@
-﻿using System.Text.Json.Serialization;
+using System.Text.Json.Serialization;
 
 namespace backend.DTOs
 {
@@ -27,5 +27,8 @@ namespace backend.DTOs
 
         [JsonPropertyName("sk_aparato_id")]
         public int? SkAparatoId { get; set; }
+
+        [JsonPropertyName("pasos")]
+        public List<GestoPasoDto>? Pasos { get; set; }
     }
 }
