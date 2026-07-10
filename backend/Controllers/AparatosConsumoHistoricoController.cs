@@ -1,4 +1,4 @@
-﻿using backend.Models;
+using backend.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using backend.DTOs;
@@ -65,6 +65,95 @@ namespace backend.Controllers
             }
 
             return Ok(resultado);
+        }
+
+        [HttpGet("todos_los_consumos/resumen")]
+        public async Task<ActionResult<AparatoConsumoResumenDto>> GetConsumoResumenGlobal(
+            [FromQuery] string granularidad = "dia",
+            [FromQuery] DateTime? desde = null,
+            [FromQuery] DateTime? hasta = null)
+        {
+            var usuarioId = (int?)HttpContext.Items["UsuarioId"];
+
+            var query = from consumo in _context.AparatoConsumoHistoricos
+                        join config in _context.AparatoConfiguracionesRed
+                            on consumo.sk_aparato_configuracion_red_id equals config.sk_aparato_configuracion_red_id
+                        join aparato in _context.Aparatos
+                            on config.sk_aparato_id equals aparato.sk_aparato_id
+                        where aparato.sk_usuario_id == usuarioId 
+                        select new { consumo, config.sk_aparato_configuracion_red_id };
+
+            if (desde.HasValue)
+                query = query.Where(q => q.consumo.fecha_medicion >= desde.Value);
+
+            if (hasta.HasValue)
+                query = query.Where(q => q.consumo.fecha_medicion <= hasta.Value);
+
+            var lecturasAnom = await query.OrderBy(q => q.consumo.fecha_medicion).ToListAsync();
+
+            var resumen = new AparatoConsumoResumenDto
+            {
+                Granularidad = granularidad,
+                Desde = desde ?? (lecturasAnom.Any() ? lecturasAnom.Min(l => l.consumo.fecha_medicion) : DateTime.UtcNow.Date),
+                Hasta = hasta ?? (lecturasAnom.Any() ? lecturasAnom.Max(l => l.consumo.fecha_medicion) : DateTime.UtcNow.Date),
+                Puntos = new List<AparatoConsumoPuntoDto>()
+            };
+
+            if (!lecturasAnom.Any())
+                return Ok(resumen);
+
+            if (granularidad.ToLower() == "envivo")
+            {
+                var gruposEnVivo = lecturasAnom
+                    .GroupBy(l => new DateTime(l.consumo.fecha_medicion.Year, l.consumo.fecha_medicion.Month, l.consumo.fecha_medicion.Day, l.consumo.fecha_medicion.Hour, l.consumo.fecha_medicion.Minute, 0, l.consumo.fecha_medicion.Kind))
+                    .OrderByDescending(g => g.Key)
+                    .Take(60)
+                    .OrderBy(g => g.Key);
+
+                foreach (var grupo in gruposEnVivo)
+                {
+                    float energiaTotal = 0;
+                    var porDispositivo = grupo.GroupBy(g => g.sk_aparato_configuracion_red_id);
+                    foreach (var devGrp in porDispositivo)
+                    {
+                        energiaTotal += (float)(devGrp.Max(l => l.consumo.energia_wh) - devGrp.Min(l => l.consumo.energia_wh));
+                    }
+
+                    resumen.Puntos.Add(new AparatoConsumoPuntoDto
+                    {
+                        Periodo = grupo.Key,
+                        PotenciaPromedioW = porDispositivo.Sum(d => (float)d.Average(l => l.consumo.potencia_w)),
+                        CorrientePromedioA = porDispositivo.Sum(d => (float)d.Average(l => l.consumo.corriente_a)),
+                        EnergiaConsumidaWh = energiaTotal
+                    });
+                }
+                return Ok(resumen);
+            }
+
+            var gruposTemporales = granularidad.ToLower() == "mes"
+                ? lecturasAnom.GroupBy(l => l.consumo.fecha_medicion.Date)
+                : lecturasAnom.GroupBy(l => new DateTime(l.consumo.fecha_medicion.Year, l.consumo.fecha_medicion.Month, l.consumo.fecha_medicion.Day, l.consumo.fecha_medicion.Hour, 0, 0, l.consumo.fecha_medicion.Kind));
+
+            foreach (var grupo in gruposTemporales)
+            {
+                float energiaTotal = 0;
+                var porDispositivo = grupo.GroupBy(g => g.sk_aparato_configuracion_red_id);
+                foreach (var devGrp in porDispositivo)
+                {
+                    energiaTotal += (float)(devGrp.Max(l => l.consumo.energia_wh) - devGrp.Min(l => l.consumo.energia_wh));
+                }
+
+                var p = new AparatoConsumoPuntoDto
+                {
+                    Periodo = grupo.Key,
+                    PotenciaPromedioW = porDispositivo.Sum(d => (float)d.Average(l => l.consumo.potencia_w)),
+                    CorrientePromedioA = porDispositivo.Sum(d => (float)d.Average(l => l.consumo.corriente_a)),
+                    EnergiaConsumidaWh = energiaTotal
+                };
+                resumen.Puntos.Add(p);
+            }
+
+            return Ok(resumen);
         }
 
         // Mantienes tu endpoint individual original abajo si lo necesitas...
