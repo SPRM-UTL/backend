@@ -119,7 +119,7 @@ public class GestosController : ControllerBase
         }
 
         bool isCombo = dto.TipoDisparadorNombre != null && 
-                       (dto.TipoDisparadorNombre.ToUpper() == "COMBO" || dto.TipoDisparadorNombre.ToUpper() == "SECUENCIA");
+                       (dto.TipoDisparadorNombre.ToUpper().Contains("COMBO") || dto.TipoDisparadorNombre.ToUpper().Contains("SECUENCIA"));
 
         if (!isCombo && !GestosValidos.Contains(dto.NombreGesto))
         {
@@ -180,7 +180,7 @@ public class GestosController : ControllerBase
     public async Task<ActionResult<GestoDto>> PostGesto(GestoDto dto)
     {
         bool isCombo = dto.TipoDisparadorNombre != null && 
-                       (dto.TipoDisparadorNombre.ToUpper() == "COMBO" || dto.TipoDisparadorNombre.ToUpper() == "SECUENCIA");
+                       (dto.TipoDisparadorNombre.ToUpper().Contains("COMBO") || dto.TipoDisparadorNombre.ToUpper().Contains("SECUENCIA"));
 
         if (!isCombo && !GestosValidos.Contains(dto.NombreGesto))
         {
