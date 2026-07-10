@@ -20,14 +20,20 @@ namespace backend.Controllers
             _context = context;
         }
 
-        // GET: api/AparatosConsumoHistorico/todos_los_consumos
-        [HttpGet("todos_los_consumos")]
-        public async Task<ActionResult<IEnumerable<AparatoConsumoDto>>> GetConsumoHistoricoTodos(
+        // Historial de todos los aparatos de un usuario
+        [HttpGet("{usuarioId}/consumo_historico")]
+        public async Task<ActionResult<IEnumerable<AparatoConsumoDto>>> GetConsumoHistoricoPorUsuario(
+            [FromRoute] int usuarioId,
             [FromQuery] int limit = 100,
             [FromQuery] DateTime? desde = null,
             [FromQuery] DateTime? hasta = null)
         {
-            var usuarioId = (int?)HttpContext.Items["UsuarioId"];
+            var usuarioSolicitadoId = usuarioId;
+
+            if (usuarioSolicitadoId == 0)
+            {
+                return Unauthorized(new { message = "Usuario no autenticado" });
+            }
 
             limit = Math.Clamp(limit, 1, 2000);
 
@@ -36,7 +42,7 @@ namespace backend.Controllers
                             on consumo.sk_aparato_configuracion_red_id equals config.sk_aparato_configuracion_red_id
                         join aparato in _context.Aparatos
                             on config.sk_aparato_id equals aparato.sk_aparato_id
-                        where aparato.sk_usuario_id == usuarioId 
+                        where aparato.sk_usuario_id == usuarioSolicitadoId
                         select new { consumo, config.sk_aparato_id };
 
             if (desde.HasValue)
@@ -45,13 +51,13 @@ namespace backend.Controllers
             if (hasta.HasValue)
                 query = query.Where(q => q.consumo.fecha_medicion <= hasta.Value);
 
-            var resultado = await query
+            var historico = await query
                 .OrderBy(q => q.consumo.fecha_medicion)
                 .Take(limit)
                 .Select(q => new AparatoConsumoDto
                 {
                     SkConsumoId = q.consumo.sk_consumo_id,
-                    SkAparatoId = q.sk_aparato_id, 
+                    SkAparatoId = q.sk_aparato_id,
                     CorrienteA = q.consumo.corriente_a,
                     PotenciaW = q.consumo.potencia_w,
                     EnergiaWh = q.consumo.energia_wh,
@@ -59,12 +65,12 @@ namespace backend.Controllers
                 })
                 .ToListAsync();
 
-            if (!resultado.Any())
+            if (!historico.Any())
             {
                 return NotFound("No se encontraron registros de consumo para tus aparatos.");
             }
 
-            return Ok(resultado);
+            return Ok(historico);
         }
 
         [HttpGet("todos_los_consumos/resumen")]
@@ -193,6 +199,7 @@ namespace backend.Controllers
                     EnergiaWh = c.energia_wh,
                     FechaMedicion = c.fecha_medicion
                 }).ToListAsync();
+
 
             return Ok(historico);
         }

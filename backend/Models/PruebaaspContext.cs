@@ -30,6 +30,7 @@ public partial class PruebaaspContext : DbContext
     public virtual DbSet<HistorialActividad> HistorialActividades { get; set; }
     public DbSet<GestoDetalle> GestoDetalles { get; set; }
     public DbSet<GestoMedia> GestoMedias { get; set; }
+    public DbSet<GestoPaso> GestoPasos { get; set; }
     public virtual DbSet<Casa> Casas { get; set; }
     public virtual DbSet<Habitacion> Habitaciones { get; set; }
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -347,6 +348,25 @@ public partial class PruebaaspContext : DbContext
             entity.HasOne(d => d.GestoDetalle)
                 .WithMany(p => p.MediosReferencia)
                 .HasForeignKey(d => d.GestoDetalleId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<GestoPaso>(entity =>
+        {
+            entity.HasKey(e => e.sk_gesto_paso_id);
+            entity.ToTable("gesto_paso");
+
+            entity.Property(e => e.sk_gesto_paso_id).HasColumnName("sk_gesto_paso_id");
+            entity.Property(e => e.sk_gesto_id).HasColumnName("sk_gesto_id");
+            entity.Property(e => e.orden).HasColumnName("orden");
+            entity.Property(e => e.es_activador).HasColumnName("es_activador");
+            entity.Property(e => e.nombre_gesto).HasMaxLength(100).HasColumnName("nombre_gesto");
+            entity.Property(e => e.mano_objetivo).HasMaxLength(20).HasColumnName("mano_objetivo");
+            entity.Property(e => e.cuadros_requeridos).HasColumnName("cuadros_requeridos");
+
+            entity.HasOne(d => d.Gesto)
+                .WithMany(p => p.PasosSecuencia)
+                .HasForeignKey(d => d.sk_gesto_id)
                 .OnDelete(DeleteBehavior.Cascade);
         });
     }

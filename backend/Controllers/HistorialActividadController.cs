@@ -27,6 +27,7 @@ namespace backend.Controllers
                 .Include(h => h.Tiempo)
                 .Include(h => h.Usuario)
                 .Include(h => h.Aparato)
+                .Include(h => h.Gesto)
                 .OrderByDescending(h => h.sk_actividad_id)
                 .ToListAsync(); // Resolvemos la consulta SQL aquí de forma limpia
 
@@ -35,10 +36,13 @@ namespace backend.Controllers
             {
                 Id = h.sk_actividad_id,
 
-                // Ahora sí podemos usar .ToString() de forma segura porque está en memoria
-                Hora = h.Tiempo != null ? h.Tiempo.hora_periodo.ToString() : "0",
+                Hora = h.Tiempo != null 
+                    ? $"{h.Tiempo.fecha_completa:dd/MM/yyyy} {h.Tiempo.hora_periodo:00}:00" 
+                    : "Desconocida",
 
-                Accion = $"Gesto detectado por {(h.Usuario != null ? h.Usuario.nombre_usuario : "Usuario")}",
+                Accion = h.sk_gesto_id == 1 
+                    ? $"Activado manualmente por {(h.Usuario != null ? h.Usuario.nombre_usuario : "Usuario")}" 
+                    : $"Activado por gesto '{(h.Gesto != null ? h.Gesto.nombre_gesto : "Desconocido")}' ({(h.Usuario != null ? h.Usuario.nombre_usuario : "Usuario")})",
 
                 Dispositivo = h.Aparato != null ? h.Aparato.nombre_aparato ?? "Dispositivo" : "Dispositivo",
 
