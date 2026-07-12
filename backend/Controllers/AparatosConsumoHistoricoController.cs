@@ -136,9 +136,11 @@ namespace backend.Controllers
                 return Ok(resumen);
             }
 
-            var gruposTemporales = granularidad.ToLower() == "mes"
-                ? lecturasAnom.GroupBy(l => l.consumo.fecha_medicion.Date)
-                : lecturasAnom.GroupBy(l => new DateTime(l.consumo.fecha_medicion.Year, l.consumo.fecha_medicion.Month, l.consumo.fecha_medicion.Day, l.consumo.fecha_medicion.Hour, 0, 0, l.consumo.fecha_medicion.Kind));
+            var gruposTemporales = granularidad.ToLower() == "año"
+                ? lecturasAnom.GroupBy(l => new DateTime(l.consumo.fecha_medicion.Year, l.consumo.fecha_medicion.Month, 1, 0, 0, 0, l.consumo.fecha_medicion.Kind))
+                : (granularidad.ToLower() == "mes"
+                    ? lecturasAnom.GroupBy(l => l.consumo.fecha_medicion.Date)
+                    : lecturasAnom.GroupBy(l => new DateTime(l.consumo.fecha_medicion.Year, l.consumo.fecha_medicion.Month, l.consumo.fecha_medicion.Day, l.consumo.fecha_medicion.Hour, 0, 0, l.consumo.fecha_medicion.Kind)));
 
             foreach (var grupo in gruposTemporales)
             {
@@ -203,5 +205,45 @@ namespace backend.Controllers
 
             return Ok(historico);
         }
+
+        [HttpGet("{usuarioId}/resumen_dona")]
+        public async Task<ActionResult<IEnumerable<object>>> GetConsumoDonaPorUsuario(
+        [FromRoute] int usuarioId,
+        [FromQuery] DateTime? desde = null,
+        [FromQuery] DateTime? hasta = null)
+        {
+            if (usuarioId == 0)
+            {
+                return Unauthorized(new { message = "Usuario no autenticado" });
+            }
+
+            var query = from consumo in _context.AparatoConsumoHistoricos
+                        join config in _context.AparatoConfiguracionesRed
+                            on consumo.sk_aparato_configuracion_red_id equals config.sk_aparato_configuracion_red_id
+                        join aparato in _context.Aparatos
+                            on config.sk_aparato_id equals aparato.sk_aparato_id
+                        where aparato.sk_usuario_id == usuarioId
+                        select new { consumo, aparato.nombre_aparato };
+
+            if (desde.HasValue)
+                query = query.Where(q => q.consumo.fecha_medicion >= desde.Value);
+
+            if (hasta.HasValue)
+                query = query.Where(q => q.consumo.fecha_medicion <= hasta.Value);
+
+            // Agrupamos por el nombre del aparato para sumar sus Wh consumidos en ese lapso de tiempo
+            var resultado = await query
+                .GroupBy(q => q.nombre_aparato)
+                .Select(g => new
+                {
+                    Aparato = g.Key,
+                    TotalEnergiaWh = g.Max(x => x.consumo.energia_wh) - g.Min(x => x.consumo.energia_wh)
+                })
+                .ToListAsync();
+
+            return Ok(resultado);
+        }
+
+
     }
 }
