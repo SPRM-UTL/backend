@@ -33,6 +33,8 @@ public partial class PruebaaspContext : DbContext
     public DbSet<GestoPaso> GestoPasos { get; set; }
     public virtual DbSet<Casa> Casas { get; set; }
     public virtual DbSet<Habitacion> Habitaciones { get; set; }
+    public virtual DbSet<CatalogoGesto> CatalogoGestos { get; set; }
+    public virtual DbSet<UsuarioGestoConfig> UsuarioGestosConfig { get; set; }
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder
@@ -369,6 +371,60 @@ public partial class PruebaaspContext : DbContext
                 .HasForeignKey(d => d.sk_gesto_id)
                 .OnDelete(DeleteBehavior.Cascade);
         });
+
+        modelBuilder.Entity<CatalogoGesto>(entity =>
+        {
+            entity.HasKey(e => e.sk_catalogo_gesto_id);
+            entity.ToTable("catalogo_gesto");
+        });
+
+        modelBuilder.Entity<UsuarioGestoConfig>(entity =>
+        {
+            entity.HasKey(e => new { e.sk_usuario_id, e.sk_catalogo_gesto_id });
+            entity.ToTable("usuario_gesto_config");
+
+            entity.HasOne(e => e.Usuario)
+                .WithMany(u => u.UsuarioGestosConfig)
+                .HasForeignKey(e => e.sk_usuario_id)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(e => e.CatalogoGesto)
+                .WithMany(c => c.UsuarioConfiguraciones)
+                .HasForeignKey(e => e.sk_catalogo_gesto_id)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // =================================================================
+        // SEEDER PARA EL CATÁLOGO DE GESTOS BASE
+        // =================================================================
+        modelBuilder.Entity<CatalogoGesto>().HasData(
+            new CatalogoGesto { sk_catalogo_gesto_id = 1, nombre = "Manos Arriba", icono = "lucide_hand", is_body_gesture = false },
+            new CatalogoGesto { sk_catalogo_gesto_id = 2, nombre = "Una Mano Arriba", icono = "lucide_hand", is_body_gesture = false },
+            new CatalogoGesto { sk_catalogo_gesto_id = 3, nombre = "Agitar la Mano", icono = "lucide_hand", is_body_gesture = false },
+            new CatalogoGesto { sk_catalogo_gesto_id = 4, nombre = "Abrir Puño", icono = "lucide_hand", is_body_gesture = false },
+            new CatalogoGesto { sk_catalogo_gesto_id = 5, nombre = "Cerrar Puño", icono = "lucide_hand", is_body_gesture = false },
+            new CatalogoGesto { sk_catalogo_gesto_id = 6, nombre = "A PULGAR ARRIBA", icono = "lucide_thumbs_up", is_body_gesture = false },
+            new CatalogoGesto { sk_catalogo_gesto_id = 7, nombre = "A PULGAR ABAJO", icono = "lucide_thumbs_down", is_body_gesture = false },
+            new CatalogoGesto { sk_catalogo_gesto_id = 8, nombre = "B CUATRO", icono = "lucide_hand", is_body_gesture = false },
+            new CatalogoGesto { sk_catalogo_gesto_id = 9, nombre = "D UNO", icono = "lucide_hand", is_body_gesture = false },
+            new CatalogoGesto { sk_catalogo_gesto_id = 10, nombre = "F OK", icono = "lucide_check", is_body_gesture = false },
+            new CatalogoGesto { sk_catalogo_gesto_id = 11, nombre = "I", icono = "lucide_hand", is_body_gesture = false },
+            new CatalogoGesto { sk_catalogo_gesto_id = 12, nombre = "L", icono = "lucide_hand", is_body_gesture = false },
+            new CatalogoGesto { sk_catalogo_gesto_id = 13, nombre = "U", icono = "lucide_hand", is_body_gesture = false },
+            new CatalogoGesto { sk_catalogo_gesto_id = 14, nombre = "V PAZ", icono = "lucide_heart", is_body_gesture = false },
+            new CatalogoGesto { sk_catalogo_gesto_id = 15, nombre = "W TRES", icono = "lucide_hand", is_body_gesture = false },
+            new CatalogoGesto { sk_catalogo_gesto_id = 16, nombre = "Y", icono = "lucide_hand", is_body_gesture = false },
+            new CatalogoGesto { sk_catalogo_gesto_id = 17, nombre = "PUÑO", icono = "lucide_hand", is_body_gesture = false },
+            new CatalogoGesto { sk_catalogo_gesto_id = 18, nombre = "CINCO MANO ABIERTA", icono = "lucide_hand", is_body_gesture = false },
+            new CatalogoGesto { sk_catalogo_gesto_id = 19, nombre = "ROCK", icono = "lucide_star", is_body_gesture = false },
+            new CatalogoGesto { sk_catalogo_gesto_id = 20, nombre = "TE AMO ILY", icono = "lucide_heart", is_body_gesture = false },
+            
+            // Body Gestures
+            new CatalogoGesto { sk_catalogo_gesto_id = 21, nombre = "Sentadillas", icono = "lucide_zap", is_body_gesture = true },
+            new CatalogoGesto { sk_catalogo_gesto_id = 22, nombre = "Decir si con la cabeza", icono = "lucide_check", is_body_gesture = true },
+            new CatalogoGesto { sk_catalogo_gesto_id = 23, nombre = "Decir no con la cabeza", icono = "lucide_power", is_body_gesture = true },
+            new CatalogoGesto { sk_catalogo_gesto_id = 24, nombre = "Aplaudir", icono = "lucide_star", is_body_gesture = true }
+        );
     }
 
     partial void OnModelCreatingPartial(ModelBuilder modelBuilder);

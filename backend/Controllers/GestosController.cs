@@ -57,6 +57,7 @@ public class GestosController : ControllerBase
                 IdentificadorIa = g.identificador_ia,
                 NivelConfianzaMinimo = g.nivel_confianza_minimo,
                 TipoDisparadorNombre = g.tipo_disparador_nombre,
+                FraseVozActivadora = g.frase_voz_activadora,
                 SkAparatoId = g.sk_aparato_id,
                 Pasos = g.PasosSecuencia.Select(p => new GestoPasoDto
                 {
@@ -87,6 +88,7 @@ public class GestosController : ControllerBase
                 IdentificadorIa = g.identificador_ia,
                 NivelConfianzaMinimo = g.nivel_confianza_minimo,
                 TipoDisparadorNombre = g.tipo_disparador_nombre,
+                FraseVozActivadora = g.frase_voz_activadora,
                 SkAparatoId = g.sk_aparato_id,
                 Pasos = g.PasosSecuencia.Select(p => new GestoPasoDto
                 {
@@ -119,7 +121,9 @@ public class GestosController : ControllerBase
         }
 
         bool isCombo = dto.TipoDisparadorNombre != null && 
-                       (dto.TipoDisparadorNombre.ToUpper().Contains("COMBO") || dto.TipoDisparadorNombre.ToUpper().Contains("SECUENCIA"));
+                       (dto.TipoDisparadorNombre.ToUpper().Contains("COMBO") || 
+                        dto.TipoDisparadorNombre.ToUpper().Contains("SECUENCIA") ||
+                        dto.TipoDisparadorNombre.ToUpper().Contains("VOZ"));
 
         if (!isCombo && !GestosValidos.Contains(dto.NombreGesto))
         {
@@ -180,7 +184,9 @@ public class GestosController : ControllerBase
     public async Task<ActionResult<GestoDto>> PostGesto(GestoDto dto)
     {
         bool isCombo = dto.TipoDisparadorNombre != null && 
-                       (dto.TipoDisparadorNombre.ToUpper().Contains("COMBO") || dto.TipoDisparadorNombre.ToUpper().Contains("SECUENCIA"));
+                       (dto.TipoDisparadorNombre.ToUpper().Contains("COMBO") || 
+                        dto.TipoDisparadorNombre.ToUpper().Contains("SECUENCIA") ||
+                        dto.TipoDisparadorNombre.ToUpper().Contains("VOZ"));
 
         if (!isCombo && !GestosValidos.Contains(dto.NombreGesto))
         {
@@ -339,6 +345,7 @@ public class GestosController : ControllerBase
         IdentificadorIa = gesto.identificador_ia,
         NivelConfianzaMinimo = gesto.nivel_confianza_minimo,
         TipoDisparadorNombre = gesto.tipo_disparador_nombre,
+        FraseVozActivadora = gesto.frase_voz_activadora,
         SkAparatoId = gesto.sk_aparato_id,
         Pasos = gesto.PasosSecuencia?.Select(p => new GestoPasoDto
         {
@@ -359,6 +366,7 @@ public class GestosController : ControllerBase
         gesto.identificador_ia = dto.IdentificadorIa;
         gesto.nivel_confianza_minimo = dto.NivelConfianzaMinimo;
         gesto.tipo_disparador_nombre = dto.TipoDisparadorNombre;
+        gesto.frase_voz_activadora = dto.FraseVozActivadora;
         gesto.sk_aparato_id = dto.SkAparatoId;
     }
 }

@@ -25,6 +25,9 @@ namespace backend.DTOs
         [JsonPropertyName("tipo_disparador_nombre")]
         public string? TipoDisparadorNombre { get; set; }
 
+        [JsonPropertyName("frase_voz_activadora")]
+        public string? FraseVozActivadora { get; set; }
+
         [JsonPropertyName("sk_aparato_id")]
         public int? SkAparatoId { get; set; }
 

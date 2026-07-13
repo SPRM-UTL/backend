@@ -25,6 +25,9 @@ namespace backend.Models
         [MaxLength(100)]
         public string? tipo_disparador_nombre { get; set; }
 
+        [MaxLength(150)]
+        public string? frase_voz_activadora { get; set; }
+
         [JsonIgnore]
         public List<HistorialActividad>? Historico_Actividad { get; set; }
 

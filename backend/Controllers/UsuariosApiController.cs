@@ -1,4 +1,4 @@
-﻿using backend.Models;
+using backend.Models;
 using backend.DTOs; // Acceso a tus DTOs en español
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
@@ -218,6 +218,40 @@ namespace backend.Controllers
                 ruta_imagen = relativePath,
                 url_imagen = absoluteUrl
             });
+        }
+
+        // GET: api/usuarios/5/voz-config
+        [HttpGet("{id}/voz-config")]
+        public async Task<ActionResult<UsuarioVozConfigDto>> GetVozConfig(int id)
+        {
+            var usuario = await _context.Usuarios.FindAsync(id);
+            if (usuario == null) return NotFound();
+
+            return Ok(new UsuarioVozConfigDto
+            {
+                ControlVozActivado = usuario.control_voz_activado,
+                ConfirmacionHabladaActivada = usuario.confirmacion_hablada_activada,
+                VozTipoSeleccionado = usuario.voz_tipo_seleccionado,
+                VozVelocidad = usuario.voz_velocidad,
+                VozIdioma = usuario.voz_idioma
+            });
+        }
+
+        // PUT: api/usuarios/5/voz-config
+        [HttpPut("{id}/voz-config")]
+        public async Task<IActionResult> PutVozConfig(int id, [FromBody] UsuarioVozConfigDto dto)
+        {
+            var usuario = await _context.Usuarios.FindAsync(id);
+            if (usuario == null) return NotFound();
+
+            usuario.control_voz_activado = dto.ControlVozActivado;
+            usuario.confirmacion_hablada_activada = dto.ConfirmacionHabladaActivada;
+            usuario.voz_tipo_seleccionado = dto.VozTipoSeleccionado;
+            usuario.voz_velocidad = dto.VozVelocidad;
+            usuario.voz_idioma = dto.VozIdioma;
+
+            await _context.SaveChangesAsync();
+            return Ok(new { mensaje = "Configuración de voz actualizada" });
         }
 
         // DELETE: api/UsuariosApi/5

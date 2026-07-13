@@ -280,6 +280,10 @@ namespace backend.Controllers
                 Console.WriteLine($"Error al guardar el historial de actividad: {ex.Message}");
             }
 
+            var mensaje_confirmacion = estado 
+                ? $"Encendiste {config.Aparato?.nombre_aparato}" 
+                : $"Apagaste {config.Aparato?.nombre_aparato}";
+
             return Ok(new
             {
                 success = true,
@@ -288,7 +292,8 @@ namespace backend.Controllers
                 estado_encendido_2 = config.estado_encendido_2,
                 estado_encendido_3 = config.estado_encendido_3,
                 estado_encendido_4 = config.estado_encendido_4,
-                fecha_estado_actualizado = DateTime.UtcNow
+                fecha_estado_actualizado = DateTime.UtcNow,
+                mensaje_confirmacion
             });
         }
 
@@ -375,13 +380,18 @@ namespace backend.Controllers
                 Console.WriteLine($"Error al guardar el historial de actividad: {ex.Message}");
             }
 
+            var mensaje_confirmacion = estado 
+                ? $"Encendiste {config.Aparato?.nombre_aparato}" 
+                : $"Apagaste {config.Aparato?.nombre_aparato}";
+
             return Ok(new
             {
                 success = true,
                 comando,
                 contacto,
                 estado_encendido = estado,
-                fecha_estado_actualizado = DateTime.UtcNow
+                fecha_estado_actualizado = DateTime.UtcNow,
+                mensaje_confirmacion
             });
         }
     }

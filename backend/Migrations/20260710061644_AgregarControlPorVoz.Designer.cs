@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using backend.Models;
 
@@ -11,9 +12,11 @@ using backend.Models;
 namespace backend.Migrations
 {
     [DbContext(typeof(PruebaaspContext))]
-    partial class PruebaaspContextModelSnapshot : ModelSnapshot
+    [Migration("20260710061644_AgregarControlPorVoz")]
+    partial class AgregarControlPorVoz
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -447,202 +450,6 @@ namespace backend.Migrations
                     b.ToTable("casa", (string)null);
                 });
 
-            modelBuilder.Entity("backend.Models.CatalogoGesto", b =>
-                {
-                    b.Property<int>("sk_catalogo_gesto_id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("sk_catalogo_gesto_id"));
-
-                    b.Property<string>("icono")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("varchar(50)");
-
-                    b.Property<bool>("is_body_gesture")
-                        .HasColumnType("tinyint(1)");
-
-                    b.Property<string>("nombre")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("varchar(100)");
-
-                    b.HasKey("sk_catalogo_gesto_id");
-
-                    b.ToTable("catalogo_gesto", (string)null);
-
-                    b.HasData(
-                        new
-                        {
-                            sk_catalogo_gesto_id = 1,
-                            icono = "lucide_hand",
-                            is_body_gesture = false,
-                            nombre = "Manos Arriba"
-                        },
-                        new
-                        {
-                            sk_catalogo_gesto_id = 2,
-                            icono = "lucide_hand",
-                            is_body_gesture = false,
-                            nombre = "Una Mano Arriba"
-                        },
-                        new
-                        {
-                            sk_catalogo_gesto_id = 3,
-                            icono = "lucide_hand",
-                            is_body_gesture = false,
-                            nombre = "Agitar la Mano"
-                        },
-                        new
-                        {
-                            sk_catalogo_gesto_id = 4,
-                            icono = "lucide_hand",
-                            is_body_gesture = false,
-                            nombre = "Abrir Puño"
-                        },
-                        new
-                        {
-                            sk_catalogo_gesto_id = 5,
-                            icono = "lucide_hand",
-                            is_body_gesture = false,
-                            nombre = "Cerrar Puño"
-                        },
-                        new
-                        {
-                            sk_catalogo_gesto_id = 6,
-                            icono = "lucide_thumbs_up",
-                            is_body_gesture = false,
-                            nombre = "A PULGAR ARRIBA"
-                        },
-                        new
-                        {
-                            sk_catalogo_gesto_id = 7,
-                            icono = "lucide_thumbs_down",
-                            is_body_gesture = false,
-                            nombre = "A PULGAR ABAJO"
-                        },
-                        new
-                        {
-                            sk_catalogo_gesto_id = 8,
-                            icono = "lucide_hand",
-                            is_body_gesture = false,
-                            nombre = "B CUATRO"
-                        },
-                        new
-                        {
-                            sk_catalogo_gesto_id = 9,
-                            icono = "lucide_hand",
-                            is_body_gesture = false,
-                            nombre = "D UNO"
-                        },
-                        new
-                        {
-                            sk_catalogo_gesto_id = 10,
-                            icono = "lucide_check",
-                            is_body_gesture = false,
-                            nombre = "F OK"
-                        },
-                        new
-                        {
-                            sk_catalogo_gesto_id = 11,
-                            icono = "lucide_hand",
-                            is_body_gesture = false,
-                            nombre = "I"
-                        },
-                        new
-                        {
-                            sk_catalogo_gesto_id = 12,
-                            icono = "lucide_hand",
-                            is_body_gesture = false,
-                            nombre = "L"
-                        },
-                        new
-                        {
-                            sk_catalogo_gesto_id = 13,
-                            icono = "lucide_hand",
-                            is_body_gesture = false,
-                            nombre = "U"
-                        },
-                        new
-                        {
-                            sk_catalogo_gesto_id = 14,
-                            icono = "lucide_heart",
-                            is_body_gesture = false,
-                            nombre = "V PAZ"
-                        },
-                        new
-                        {
-                            sk_catalogo_gesto_id = 15,
-                            icono = "lucide_hand",
-                            is_body_gesture = false,
-                            nombre = "W TRES"
-                        },
-                        new
-                        {
-                            sk_catalogo_gesto_id = 16,
-                            icono = "lucide_hand",
-                            is_body_gesture = false,
-                            nombre = "Y"
-                        },
-                        new
-                        {
-                            sk_catalogo_gesto_id = 17,
-                            icono = "lucide_hand",
-                            is_body_gesture = false,
-                            nombre = "PUÑO"
-                        },
-                        new
-                        {
-                            sk_catalogo_gesto_id = 18,
-                            icono = "lucide_hand",
-                            is_body_gesture = false,
-                            nombre = "CINCO MANO ABIERTA"
-                        },
-                        new
-                        {
-                            sk_catalogo_gesto_id = 19,
-                            icono = "lucide_star",
-                            is_body_gesture = false,
-                            nombre = "ROCK"
-                        },
-                        new
-                        {
-                            sk_catalogo_gesto_id = 20,
-                            icono = "lucide_heart",
-                            is_body_gesture = false,
-                            nombre = "TE AMO ILY"
-                        },
-                        new
-                        {
-                            sk_catalogo_gesto_id = 21,
-                            icono = "lucide_zap",
-                            is_body_gesture = true,
-                            nombre = "Sentadillas"
-                        },
-                        new
-                        {
-                            sk_catalogo_gesto_id = 22,
-                            icono = "lucide_check",
-                            is_body_gesture = true,
-                            nombre = "Decir si con la cabeza"
-                        },
-                        new
-                        {
-                            sk_catalogo_gesto_id = 23,
-                            icono = "lucide_power",
-                            is_body_gesture = true,
-                            nombre = "Decir no con la cabeza"
-                        },
-                        new
-                        {
-                            sk_catalogo_gesto_id = 24,
-                            icono = "lucide_star",
-                            is_body_gesture = true,
-                            nombre = "Aplaudir"
-                        });
-                });
-
             modelBuilder.Entity("backend.Models.Gesto", b =>
                 {
                     b.Property<int>("sk_gesto_id")
@@ -1026,24 +833,6 @@ namespace backend.Migrations
                     b.ToTable("usuario", (string)null);
                 });
 
-            modelBuilder.Entity("backend.Models.UsuarioGestoConfig", b =>
-                {
-                    b.Property<int>("sk_usuario_id")
-                        .HasColumnType("int");
-
-                    b.Property<int>("sk_catalogo_gesto_id")
-                        .HasColumnType("int");
-
-                    b.Property<bool>("is_active")
-                        .HasColumnType("tinyint(1)");
-
-                    b.HasKey("sk_usuario_id", "sk_catalogo_gesto_id");
-
-                    b.HasIndex("sk_catalogo_gesto_id");
-
-                    b.ToTable("usuario_gesto_config", (string)null);
-                });
-
             modelBuilder.Entity("backend.Models.Aparato", b =>
                 {
                     b.HasOne("backend.Models.AparatoAccion", "Accion")
@@ -1251,25 +1040,6 @@ namespace backend.Migrations
                     b.Navigation("Usuario");
                 });
 
-            modelBuilder.Entity("backend.Models.UsuarioGestoConfig", b =>
-                {
-                    b.HasOne("backend.Models.CatalogoGesto", "CatalogoGesto")
-                        .WithMany("UsuarioConfiguraciones")
-                        .HasForeignKey("sk_catalogo_gesto_id")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("backend.Models.Usuario", "Usuario")
-                        .WithMany("UsuarioGestosConfig")
-                        .HasForeignKey("sk_usuario_id")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("CatalogoGesto");
-
-                    b.Navigation("Usuario");
-                });
-
             modelBuilder.Entity("backend.Models.Aparato", b =>
                 {
                     b.Navigation("AparatosControlados");
@@ -1307,11 +1077,6 @@ namespace backend.Migrations
                     b.Navigation("Habitaciones");
                 });
 
-            modelBuilder.Entity("backend.Models.CatalogoGesto", b =>
-                {
-                    b.Navigation("UsuarioConfiguraciones");
-                });
-
             modelBuilder.Entity("backend.Models.Gesto", b =>
                 {
                     b.Navigation("Historico_Actividad");
@@ -1345,8 +1110,6 @@ namespace backend.Migrations
                     b.Navigation("Historico_Actividad");
 
                     b.Navigation("Tokens");
-
-                    b.Navigation("UsuarioGestosConfig");
                 });
 #pragma warning restore 612, 618
         }
