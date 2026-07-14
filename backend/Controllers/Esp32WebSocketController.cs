@@ -325,7 +325,8 @@ namespace backend.Controllers
             }
 
             string estadoStr = estado ? "ON" : "OFF";
-            string comando = $"C{contacto}_{estadoStr}";
+            // Formato esperado por el firmware Arduino del MultiSocket: ON1, OFF1, ON2, OFF2....
+            string comando = $"{estadoStr}{contacto}";
 
             await socket!.SendAsync(
                 Encoding.UTF8.GetBytes(comando),
