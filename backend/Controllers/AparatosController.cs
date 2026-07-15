@@ -302,7 +302,30 @@ public class AparatosController : ControllerBase
         _context.Aparatos.Add(aparato);
         await _context.SaveChangesAsync();
 
-        return CreatedAtAction(nameof(GetAparatoById), new { sk_aparato_id = aparato.sk_aparato_id }, MapAparatoDto(aparato));
+        return Created("", MapAparatoDto(aparato));
+    }
+
+    // POST: api/aparatos/5/estado-local
+    [HttpPost("{sk_aparato_id}/estado-local")]
+    public async Task<IActionResult> UpdateEstadoLocal(int sk_aparato_id, [FromBody] EstadoLocalDto dto)
+    {
+        var usuarioId = (int?)HttpContext.Items["UsuarioId"];
+        var aparato = await _context.Aparatos
+            .Include(a => a.ConfiguracionRed)
+            .FirstOrDefaultAsync(a => a.sk_aparato_id == sk_aparato_id && a.sk_usuario_id == usuarioId);
+
+        if (aparato == null)
+            return NotFound(new { mensaje = "Aparato no encontrado" });
+
+        if (aparato.ConfiguracionRed == null)
+            return NotFound(new { mensaje = "El aparato no tiene configuración de red" });
+
+        aparato.ConfiguracionRed.estado_encendido = dto.EstadoEncendido;
+        aparato.ConfiguracionRed.fecha_estado_actualizado = DateTime.Now;
+
+        await _context.SaveChangesAsync();
+
+        return Ok(new { mensaje = "Estado local actualizado correctamente", estado_encendido = dto.EstadoEncendido });
     }
 
     // DELETE: api/Dim_Aparatos/5
@@ -527,13 +550,15 @@ public class AparatosController : ControllerBase
         Icono = aparato.icono,
         MacBluetooth = aparato.Bluetooth?.mac_bluetooth,
         NombreBluetooth = aparato.Bluetooth?.nombre_bluetooth,
-        FechaSincronizacion = aparato.fecha_sincronizacion
+        FechaSincronizacion = aparato.fecha_sincronizacion,
+        MetodoVinculacion = aparato.metodo_vinculacion
     };
 
     private async Task ApplyDto(Aparato aparato, AparatoDto dto)
     {
         aparato.nombre_aparato = dto.NombreAparato;
         aparato.icono = dto.Icono;
+        aparato.metodo_vinculacion = dto.MetodoVinculacion;
         aparato.fecha_sincronizacion = dto.FechaSincronizacion;
         aparato.sk_habitacion_id = dto.SkHabitacionId;
         aparato.Tipo = await GetOrCreateTipo(dto.TipoAparato);
@@ -629,6 +654,7 @@ public class AparatosController : ControllerBase
             MacBluetooth = a.Bluetooth?.mac_bluetooth,
             NombreBluetooth = a.Bluetooth?.nombre_bluetooth,
             FechaSincronizacion = a.fecha_sincronizacion,
+            MetodoVinculacion = a.metodo_vinculacion,
             SkHabitacionId = a.sk_habitacion_id,
             NombreHabitacion = a.Habitacion?.nombre_habitacion,
             EstadoEncendido = a.ConfiguracionRed?.estado_encendido,

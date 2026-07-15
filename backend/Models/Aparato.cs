@@ -21,6 +21,9 @@ namespace backend.Models
 
         public int? sk_aparato_accion_id { get; set; }
 
+        [MaxLength(50)]
+        public string? metodo_vinculacion { get; set; }
+
         [JsonIgnore]
         public List<HistorialActividad>? Historico_Actividad { get; set; }
 

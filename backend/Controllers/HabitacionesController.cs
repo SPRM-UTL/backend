@@ -31,7 +31,7 @@ public class HabitacionesController : ControllerBase
                 SkHabitacionId = h.sk_habitacion_id,
                 NombreHabitacion = h.nombre_habitacion,
                 SkCasaId = h.sk_casa_id,
-                Aparatos = h.Aparatos == null ? null : h.Aparatos.Select(a => new AparatoDto
+                Aparatos = h.Aparatos!.Select(a => new AparatoDto
                 {
                     SkAparatoId = a.sk_aparato_id,
                     NombreAparato = a.nombre_aparato,
@@ -62,7 +62,7 @@ public class HabitacionesController : ControllerBase
         _context.Habitaciones.Add(habitacion);
         await _context.SaveChangesAsync();
 
-        return CreatedAtAction(nameof(GetHabitacionesByCasa), new { casaId = habitacion.sk_casa_id }, new HabitacionDto
+        return Created("", new HabitacionDto
         {
             SkHabitacionId = habitacion.sk_habitacion_id,
             NombreHabitacion = habitacion.nombre_habitacion,

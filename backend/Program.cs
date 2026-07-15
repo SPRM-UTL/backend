@@ -74,8 +74,8 @@ try
         // if (!db.AparatoTipos.Any(t => t.nombre_tipo == "Focos"))
         //     db.AparatoTipos.Add(new AparatoTipo { nombre_tipo = "Focos", icono = "lightbulb", es_asistente = false, soporta_wifi = true, soporta_bluetooth = false, orden = 2, palabras_clave_busqueda = "FOCO,LIGHT,BULB,LAMP" });
 
-        if (!db.AparatoTipos.Any(t => t.nombre_tipo == "Enchufe"))
-            db.AparatoTipos.Add(new AparatoTipo { nombre_tipo = "Enchufe", icono = "plug", es_asistente = false, soporta_wifi = true, soporta_bluetooth = true, requiere_vinculacion_bluetooth = false, orden = 3, palabras_clave_busqueda = "SOCKET,PLUG,ENCHUFE,SMARTPLUG" });
+        // if (!db.AparatoTipos.Any(t => t.nombre_tipo == "Enchufe"))
+        //     db.AparatoTipos.Add(new AparatoTipo { nombre_tipo = "Enchufe", icono = "plug", es_asistente = false, soporta_wifi = true, soporta_bluetooth = true, requiere_vinculacion_bluetooth = false, orden = 3, palabras_clave_busqueda = "SOCKET,PLUG,ENCHUFE,SMARTPLUG" });
 
         if (!db.AparatoTipos.Any(t => t.nombre_tipo == "Sockets Inteligentes"))
             db.AparatoTipos.Add(new AparatoTipo { nombre_tipo = "Sockets Inteligentes", icono = "plug", es_asistente = false, soporta_wifi = true, soporta_bluetooth = true, orden = 4, palabras_clave_busqueda = "SOCKET,PLUG,SMARTPLUG" });
@@ -83,8 +83,8 @@ try
         if (!db.AparatoTipos.Any(t => t.nombre_tipo == "MultiSocket"))
             db.AparatoTipos.Add(new AparatoTipo { nombre_tipo = "MultiSocket", icono = "plug", es_asistente = false, soporta_wifi = true, soporta_bluetooth = true, requiere_vinculacion_bluetooth = false, orden = 5, palabras_clave_busqueda = "MULTISOCKET,MULTI SOCKET,REGLETA,POWERSTRIP,POWER STRIP,MULTIENCHUFE,CONTACTO,CONTACTOS,SOCKET,PLUG" });
 
-        if (!db.AparatoTipos.Any(t => t.nombre_tipo == "Ventilador"))
-            db.AparatoTipos.Add(new AparatoTipo { nombre_tipo = "Ventilador", icono = "wind", es_asistente = false, soporta_wifi = true, soporta_bluetooth = true, requiere_vinculacion_bluetooth = false, orden = 6, palabras_clave_busqueda = "FAN,VENTILADOR" });
+        // if (!db.AparatoTipos.Any(t => t.nombre_tipo == "Ventilador"))
+        //     db.AparatoTipos.Add(new AparatoTipo { nombre_tipo = "Ventilador", icono = "wind", es_asistente = false, soporta_wifi = true, soporta_bluetooth = true, requiere_vinculacion_bluetooth = false, orden = 6, palabras_clave_busqueda = "FAN,VENTILADOR" });
 
         if (!db.AparatoTipos.Any(t => t.nombre_tipo == "Cámara"))
             db.AparatoTipos.Add(new AparatoTipo { nombre_tipo = "Cámara", icono = "videocam", es_asistente = false, soporta_wifi = true, soporta_bluetooth = true, requiere_vinculacion_bluetooth = false, orden = 7, palabras_clave_busqueda = "CAM,CAMERA,CAMARA,WEBCAM,VIDEO" });
@@ -109,9 +109,7 @@ try
         foreach (var tipo in tipos) {
             var usaWifiBluetooth =
                 tipo.nombre_tipo == "Sockets Inteligentes" ||
-                tipo.nombre_tipo == "Enchufe" ||
                 tipo.nombre_tipo == "MultiSocket" ||
-                tipo.nombre_tipo == "Ventilador" ||
                 tipo.nombre_tipo == "Cámara";
 
             // Forzar configuración WiFi-only por defecto a los antiguos
@@ -122,9 +120,7 @@ try
                 tipo.soporta_bluetooth = true;
                 tipo.soporta_wifi = true;
                 
-                if (tipo.nombre_tipo == "Enchufe" ||
-                    tipo.nombre_tipo == "MultiSocket" ||
-                    tipo.nombre_tipo == "Ventilador" ||
+                if (tipo.nombre_tipo == "MultiSocket" ||
                     tipo.nombre_tipo == "Cámara") {
                     tipo.requiere_vinculacion_bluetooth = false;
                 }
@@ -134,10 +130,10 @@ try
                 switch (tipo.nombre_tipo) {
                     // case "Asistente": tipo.icono = "ic_input_add"; tipo.orden = 1; break;
                     // case "Focos": tipo.icono = "lightbulb"; tipo.orden = 2; break;
-                    case "Enchufe": tipo.icono = "plug"; tipo.orden = 3; break;
+                    // case "Enchufe": tipo.icono = "plug"; tipo.orden = 3; break;
                     case "Sockets Inteligentes": tipo.icono = "plug"; tipo.orden = 4; break;
                     case "MultiSocket": tipo.icono = "plug"; tipo.orden = 5; break;
-                    case "Ventilador": tipo.icono = "wind"; tipo.orden = 6; break;
+                    // case "Ventilador": tipo.icono = "wind"; tipo.orden = 6; break;
                     case "Cámara": tipo.icono = "videocam"; tipo.orden = 7; break;
                     // case "Televisión": tipo.icono = "tv_minimal"; tipo.orden = 6; break;
                     // case "Bocinas": tipo.icono = "speaker"; tipo.orden = 7; break;

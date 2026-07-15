@@ -22,6 +22,9 @@ namespace backend.DTOs
         [JsonPropertyName("icono")]
         public string? Icono { get; set; }
 
+        [JsonPropertyName("metodo_vinculacion")]
+        public string? MetodoVinculacion { get; set; }
+
         [JsonPropertyName("mac_bluetooth")]
         public string? MacBluetooth { get; set; }
 

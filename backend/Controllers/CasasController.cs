@@ -28,7 +28,7 @@ public class CasasController : ControllerBase
                 SkCasaId = c.sk_casa_id,
                 NombreCasa = c.nombre_casa,
                 SkUsuarioId = c.sk_usuario_id,
-                Habitaciones = c.Habitaciones == null ? null : c.Habitaciones.Select(h => new HabitacionDto
+                Habitaciones = c.Habitaciones!.Select(h => new HabitacionDto
                 {
                     SkHabitacionId = h.sk_habitacion_id,
                     NombreHabitacion = h.nombre_habitacion,
