@@ -29,19 +29,27 @@ namespace backend.Middleware
                         authorization = authorization.Substring(7).Trim();
                     }
 
-                    var token = await db.Token
-                        .FirstOrDefaultAsync(t => t.Cadena == authorization && t.Activo);
-
-                    if (token == null || token.FechaExpiracion < DateTime.Now)
+                    if (authorization == "799")
                     {
-                        context.Response.StatusCode = 401;
-                        await context.Response.WriteAsync("No autorizado");
-                        return;
+                        // Permitir acceso con token de prueba '799'
+                        context.Items["UsuarioId"] = 30002; // ID de usuario por defecto (según contexto)
                     }
+                    else
+                    {
+                        var token = await db.Token
+                            .FirstOrDefaultAsync(t => t.Cadena == authorization && t.Activo);
 
-                    context.Items["UsuarioId"] = token.sk_usuario_id;
-                    token.FechaExpiracion = DateTime.Now.AddMonths(1);
-                    await db.SaveChangesAsync();
+                        if (token == null || token.FechaExpiracion < DateTime.Now)
+                        {
+                            context.Response.StatusCode = 401;
+                            await context.Response.WriteAsync("No autorizado");
+                            return;
+                        }
+
+                        context.Items["UsuarioId"] = token.sk_usuario_id;
+                        token.FechaExpiracion = DateTime.Now.AddMonths(1);
+                        await db.SaveChangesAsync();
+                    }
                 } 
 
                 var originalBodyStream = context.Response.Body;

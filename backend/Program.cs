@@ -12,6 +12,7 @@ builder.Services.AddControllersWithViews();
 builder.Services.AddSingleton<Esp32ConnectionManager>();
 builder.Services.AddScoped<Esp32MessageRouter>();
 builder.Services.AddScoped<Esp32DeviceStateService>();
+builder.Services.AddScoped<TuyaLocalService>();
 
 builder.Services.AddCors(options =>
 {
