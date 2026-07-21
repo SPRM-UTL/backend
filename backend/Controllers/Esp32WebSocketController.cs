@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using System.Net.WebSockets;
 using System.Text;
 using Microsoft.EntityFrameworkCore;
+using System.Net.Sockets;
 
 namespace backend.Controllers
 {
@@ -165,9 +166,46 @@ namespace backend.Controllers
         }
 
         [HttpGet("status/all")]
-        public IActionResult GetAllStatus()
+        public async Task<IActionResult> GetAllStatus([FromServices] PruebaaspContext context)
         {
-            var connectedDevices = _connections.GetAllConnectedDeviceKeys();
+            var connectedDevices = _connections.GetAllConnectedDeviceKeys().ToList();
+
+            // Buscar dispositivos WIFI/LAN locales en la BD
+            var localDevices = await context.Aparatos
+                .Include(a => a.ConfiguracionRed)
+                .Where(a => (a.metodo_vinculacion == "WIFI" || a.metodo_vinculacion == "LAN") 
+                            && a.ConfiguracionRed != null 
+                            && !string.IsNullOrEmpty(a.ConfiguracionRed.ip_address))
+                .ToListAsync();
+
+            if (localDevices.Any())
+            {
+                var tasks = localDevices.Select(async device =>
+                {
+                    try
+                    {
+                        var ip = device.ConfiguracionRed!.ip_address;
+                        using var client = new TcpClient();
+                        // Ping rápido con timeout de 1 segundo (1000ms)
+                        var connectTask = client.ConnectAsync(ip!, 5577);
+                        if (await Task.WhenAny(connectTask, Task.Delay(1000)) == connectTask)
+                        {
+                            // Conexion exitosa, reportar como en línea usando su IP o device_key según convenga
+                            // El frontend podría estar usando deviceKey o IP, añadimos el deviceKey si existe, o la IP.
+                            var identifier = !string.IsNullOrEmpty(device.ConfiguracionRed.device_key) 
+                                                ? device.ConfiguracionRed.device_key 
+                                                : ip;
+                            return identifier;
+                        }
+                    }
+                    catch { }
+                    return null;
+                });
+
+                var onlineLocalDevices = (await Task.WhenAll(tasks)).Where(id => id != null);
+                connectedDevices.AddRange(onlineLocalDevices!);
+            }
+
             return Ok(new { connectedDevices });
         }
 
@@ -216,22 +254,49 @@ namespace backend.Controllers
                 .Include(c => c.Aparato)
                 .FirstOrDefault(c => c.sk_aparato_id == sk_aparato_id);
                 
-            if (config == null || string.IsNullOrWhiteSpace(config.device_key))
+            if (config == null || (string.IsNullOrWhiteSpace(config.device_key) && string.IsNullOrWhiteSpace(config.ip_address)))
             {
-                return NotFound("El aparato no tiene configuración de red o deviceKey.");
-            }
-
-            if (!_connections.TryGetOpenSocket(config.device_key, out var socket))
-            {
-                return BadRequest("El dispositivo no está conectado actualmente.");
+                return NotFound("El aparato no tiene configuración de red válida.");
             }
 
             string comando = estado ? "ON" : "OFF";
-            await socket!.SendAsync(
-                Encoding.UTF8.GetBytes(comando),
-                WebSocketMessageType.Text,
-                true,
-                cancellationToken);
+            bool esWifiLocal = config.Aparato?.metodo_vinculacion == "WIFI" || config.Aparato?.metodo_vinculacion == "LAN";
+
+            if (esWifiLocal)
+            {
+                if (string.IsNullOrWhiteSpace(config.ip_address))
+                {
+                    return BadRequest("El dispositivo WIFI/LAN no tiene IP configurada.");
+                }
+                
+                try
+                {
+                    using var client = new TcpClient();
+                    await client.ConnectAsync(config.ip_address, 5577);
+                    byte[] commandBytes = estado 
+                        ? new byte[] { 0x71, 0x23, 0x0F, 0xA3 } 
+                        : new byte[] { 0x71, 0x24, 0x0F, 0xA4 };
+                    await client.GetStream().WriteAsync(commandBytes, 0, commandBytes.Length, cancellationToken);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error conectando al socket TCP WIFI/LAN en IP: {ip}", config.ip_address);
+                    return BadRequest("Fallo al conectar con el dispositivo WIFI/LAN en red local.");
+                }
+            }
+            else
+            {
+                if (!_connections.TryGetOpenSocket(config.device_key!, out var socket))
+                {
+                    return BadRequest("El dispositivo no está conectado actualmente.");
+                }
+
+                await socket!.SendAsync(
+                    Encoding.UTF8.GetBytes(comando),
+                    WebSocketMessageType.Text,
+                    true,
+                    cancellationToken);
+            }
 
             await _stateService.ProcessOutboundCommandAsync(
                 config.sk_aparato_configuracion_red_id,
@@ -239,7 +304,7 @@ namespace backend.Controllers
                 estado,
                 "toggle",
                 cancellationToken);
-                
+
             // === GUARDAR HISTORIAL DE ACTIVIDAD ===
             try
             {
