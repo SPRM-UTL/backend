@@ -544,48 +544,6 @@ EndGlobal
 }
 </file>
 
-<file path="backend/Controllers/ExternosController.cs">
-using backend.DTOs;
-using backend.Services;
-using Microsoft.AspNetCore.Mvc;
-
-namespace backend.Controllers
-{
-    [Route("api/externos")]
-    [ApiController]
-    public class ExternosController : ControllerBase
-    {
-        private readonly TuyaLocalService _tuyaService;
-
-        public ExternosController(TuyaLocalService tuyaService)
-        {
-            _tuyaService = tuyaService;
-        }
-
-        // POST api/externos/tuya
-        [HttpPost("tuya")]
-        public async Task<IActionResult> EnviarComandoTuya([FromBody] TuyaCommandRequest request)
-        {
-            if (!ModelState.IsValid)
-            {
-                return BadRequest(ModelState);
-            }
-
-            var result = await _tuyaService.SendCommandAsync(request);
-
-            if (result)
-            {
-                return Ok(new { success = true, message = "Comando enviado al dispositivo Tuya exitosamente." });
-            }
-            else
-            {
-                return StatusCode(500, new { success = false, message = "No se pudo enviar el comando al dispositivo Tuya. Revisa los logs para más detalles." });
-            }
-        }
-    }
-}
-</file>
-
 <file path="backend/Controllers/HomeController.cs">
 using System.Diagnostics;
 using backend.Models;
@@ -621,31 +579,6 @@ namespace backend.Controllers
 }
 </file>
 
-<file path="backend/DTOs/TuyaCommandRequest.cs">
-using System.ComponentModel.DataAnnotations;
-
-namespace backend.DTOs
-{
-    public class TuyaCommandRequest
-    {
-        [Required]
-        public string IpAddress { get; set; } = string.Empty;
-
-        [Required]
-        public string DeviceId { get; set; } = string.Empty;
-
-        [Required]
-        public string LocalKey { get; set; } = string.Empty;
-
-        [Required]
-        public bool Encendido { get; set; }
-        
-        // Propiedades opcionales para comandos extra
-        public int? Brightness { get; set; }
-    }
-}
-</file>
-
 <file path="backend/libman.json">
 {
   "version": "3.0",
@@ -662,84 +595,6 @@ namespace backend.Models
         public string? RequestId { get; set; }
 
         public bool ShowRequestId => !string.IsNullOrEmpty(RequestId);
-    }
-}
-</file>
-
-<file path="backend/Services/TuyaLocalService.cs">
-using System.Net.Sockets;
-using System.Security.Cryptography;
-using System.Text;
-using System.Text.Json;
-using backend.DTOs;
-using Microsoft.Extensions.Logging;
-
-namespace backend.Services
-{
-    public class TuyaLocalService
-    {
-        private readonly ILogger<TuyaLocalService> _logger;
-
-        public TuyaLocalService(ILogger<TuyaLocalService> logger)
-        {
-            _logger = logger;
-        }
-
-        public async Task<bool> SendCommandAsync(TuyaCommandRequest request, CancellationToken cancellationToken = default)
-        {
-            try
-            {
-                _logger.LogInformation("Enviando comando Tuya a {IpAddress} para {DeviceId}", request.IpAddress, request.DeviceId);
-                
-                using var tcpClient = new TcpClient();
-                // Tuya local port is usually 6668
-                var connectTask = tcpClient.ConnectAsync(request.IpAddress, 6668, cancellationToken);
-                
-                if (await Task.WhenAny(connectTask.AsTask(), Task.Delay(3000, cancellationToken)) != connectTask.AsTask())
-                {
-                    _logger.LogWarning("Timeout al conectar a {IpAddress}:6668", request.IpAddress);
-                    return false;
-                }
-
-                if (!tcpClient.Connected) return false;
-
-                await using var stream = tcpClient.GetStream();
-
-                // 1. Construir el payload JSON (DPS)
-                // Tuya utiliza un diccionario DPS. 20 suele ser encendido/apagado en dispositivos modernos, o 1 en antiguos.
-                // Como es un foco (SHOME-120), el ID del switch suele ser 20.
-                var dps = new Dictionary<string, object>
-                {
-                    { "20", request.Encendido }
-                };
-
-                var payloadObj = new
-                {
-                    devId = request.DeviceId,
-                    uid = request.DeviceId,
-                    t = DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString(),
-                    dps = dps
-                };
-
-                string jsonPayload = JsonSerializer.Serialize(payloadObj);
-                _logger.LogInformation("Payload generado: {Payload}", jsonPayload);
-
-                // 2. Aquí iría el cifrado AES-128-ECB usando request.LocalKey y el empaquetado
-                // del protocolo Tuya (encabezado 0x000055aa, comando 0x07, crc32, etc.)
-                // TODO: Implementar el cifrado binario exacto.
-                
-                // Por ahora, simulamos el envío para probar la conexión
-                _logger.LogInformation("TODO: Cifrar con LocalKey '{Key}' y enviar por TCP", request.LocalKey);
-
-                // Simulamos respuesta exitosa
-                return true;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error al comunicarse con el dispositivo Tuya en {IpAddress}", request.IpAddress);
-                return false;
-            }
-        }
     }
 }
 </file>
@@ -83820,23 +83675,6 @@ obj/
 CONEXION=server=localhost;port=3306;database=pruebaasp;uid=root;password=root;
 </file>
 
-<file path="backend/appsettings.json">
-{
-  "Logging": {
-    "LogLevel": {
-      "Default": "Information",
-      "Microsoft.AspNetCore": "Warning"
-    }
-  },
-  "AllowedHosts": "*",
-  "ConnectionStrings": {
-
-    "conexion": "server=localhost;port=3306;database=pruebaasp;uid=root",
-    "PruebaaspContext": "Server=(localdb)\\mssqllocaldb;Database=PruebaaspContext;Trusted_Connection=True;MultipleActiveResultSets=true"
-  }
-}
-</file>
-
 <file path="backend/Controllers/CatalogoGestosController.cs">
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -83919,6 +83757,48 @@ namespace backend.Controllers
             await _context.SaveChangesAsync();
 
             return Ok(new { message = "Configuración guardada exitosamente" });
+        }
+    }
+}
+</file>
+
+<file path="backend/Controllers/ExternosController.cs">
+using backend.DTOs;
+using backend.Services;
+using Microsoft.AspNetCore.Mvc;
+
+namespace backend.Controllers
+{
+    [Route("api/externos")]
+    [ApiController]
+    public class ExternosController : ControllerBase
+    {
+        private readonly TuyaLocalService _tuyaService;
+
+        public ExternosController(TuyaLocalService tuyaService)
+        {
+            _tuyaService = tuyaService;
+        }
+
+        // POST api/externos/tuya
+        [HttpPost("tuya")]
+        public async Task<IActionResult> EnviarComandoTuya([FromBody] TuyaCommandRequest request)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
+            var result = await _tuyaService.SendCommandAsync(request);
+
+            if (result)
+            {
+                return Ok(new { success = true, message = "Comando enviado al dispositivo Tuya exitosamente." });
+            }
+            else
+            {
+                return StatusCode(500, new { success = false, message = "No se pudo enviar el comando al dispositivo Tuya. Revisa los logs para más detalles." });
+            }
         }
     }
 }
@@ -84480,6 +84360,31 @@ namespace backend.DTOs
 
         [JsonPropertyName("hora_periodo")]
         public int HoraPeriodo { get; set; }
+    }
+}
+</file>
+
+<file path="backend/DTOs/TuyaCommandRequest.cs">
+using System.ComponentModel.DataAnnotations;
+
+namespace backend.DTOs
+{
+    public class TuyaCommandRequest
+    {
+        [Required]
+        public string IpAddress { get; set; } = string.Empty;
+
+        [Required]
+        public string DeviceId { get; set; } = string.Empty;
+
+        [Required]
+        public string LocalKey { get; set; } = string.Empty;
+
+        [Required]
+        public bool Encendido { get; set; }
+        
+        // Propiedades opcionales para comandos extra
+        public int? Brightness { get; set; }
     }
 }
 </file>
@@ -101045,6 +100950,84 @@ namespace backend.Models
 }
 </file>
 
+<file path="backend/Services/TuyaLocalService.cs">
+using System.Net.Sockets;
+using System.Security.Cryptography;
+using System.Text;
+using System.Text.Json;
+using backend.DTOs;
+using Microsoft.Extensions.Logging;
+
+namespace backend.Services
+{
+    public class TuyaLocalService
+    {
+        private readonly ILogger<TuyaLocalService> _logger;
+
+        public TuyaLocalService(ILogger<TuyaLocalService> logger)
+        {
+            _logger = logger;
+        }
+
+        public async Task<bool> SendCommandAsync(TuyaCommandRequest request, CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                _logger.LogInformation("Enviando comando Tuya a {IpAddress} para {DeviceId}", request.IpAddress, request.DeviceId);
+                
+                using var tcpClient = new TcpClient();
+                // Tuya local port is usually 6668
+                var connectTask = tcpClient.ConnectAsync(request.IpAddress, 6668, cancellationToken);
+                
+                if (await Task.WhenAny(connectTask.AsTask(), Task.Delay(3000, cancellationToken)) != connectTask.AsTask())
+                {
+                    _logger.LogWarning("Timeout al conectar a {IpAddress}:6668", request.IpAddress);
+                    return false;
+                }
+
+                if (!tcpClient.Connected) return false;
+
+                await using var stream = tcpClient.GetStream();
+
+                // 1. Construir el payload JSON (DPS)
+                // Tuya utiliza un diccionario DPS. 20 suele ser encendido/apagado en dispositivos modernos, o 1 en antiguos.
+                // Como es un foco (SHOME-120), el ID del switch suele ser 20.
+                var dps = new Dictionary<string, object>
+                {
+                    { "20", request.Encendido }
+                };
+
+                var payloadObj = new
+                {
+                    devId = request.DeviceId,
+                    uid = request.DeviceId,
+                    t = DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString(),
+                    dps = dps
+                };
+
+                string jsonPayload = JsonSerializer.Serialize(payloadObj);
+                _logger.LogInformation("Payload generado: {Payload}", jsonPayload);
+
+                // 2. Aquí iría el cifrado AES-128-ECB usando request.LocalKey y el empaquetado
+                // del protocolo Tuya (encabezado 0x000055aa, comando 0x07, crc32, etc.)
+                // TODO: Implementar el cifrado binario exacto.
+                
+                // Por ahora, simulamos el envío para probar la conexión
+                _logger.LogInformation("TODO: Cifrar con LocalKey '{Key}' y enviar por TCP", request.LocalKey);
+
+                // Simulamos respuesta exitosa
+                return true;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error al comunicarse con el dispositivo Tuya en {IpAddress}", request.IpAddress);
+                return false;
+            }
+        }
+    }
+}
+</file>
+
 <file path="backend/test_api_register.ps1">
 $ErrorActionPreference = "Stop"
 
@@ -106563,6 +106546,29 @@ Si recibes `401`, revisa:
 }
 </file>
 
+<file path="backend/appsettings.json">
+{
+  "Logging": {
+    "LogLevel": {
+      "Default": "Information",
+      "Microsoft.AspNetCore": "Warning"
+    }
+  },
+  "AllowedHosts": "*",
+  "ConnectionStrings": {
+    "conexion": "server=localhost;port=3306;database=pruebaasp;uid=root;password=root",
+    "PruebaaspContext": "Server=(localdb)\\mssqllocaldb;Database=PruebaaspContext;Trusted_Connection=True;MultipleActiveResultSets=true"
+  },
+  "Kestrel": {
+    "Endpoints": {
+      "Http": {
+        "Url": "http://*:5295"
+      }
+    }
+  }
+}
+</file>
+
 <file path="backend/backend.csproj">
 <Project Sdk="Microsoft.NET.Sdk.Web">
 
@@ -106627,6 +106633,126 @@ public class AparatoTiposController : ControllerBase
                 PalabrasClaveBusqueda = t.palabras_clave_busqueda
             })
             .ToListAsync();
+    }
+}
+</file>
+
+<file path="backend/Controllers/AuthController.cs">
+using backend.Models;
+using backend.DTOs;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using System;
+using System.Security.Cryptography;
+using System.Threading.Tasks;
+
+namespace backend.Controllers
+{
+    [Route("api/[controller]")]
+    [ApiController]
+    public class AuthController : ControllerBase
+    {
+        private readonly PruebaaspContext _context;
+
+        public AuthController(PruebaaspContext context)
+        {
+            _context = context;
+        }
+
+        [HttpPost("login")]
+        public async Task<ActionResult> Login([FromBody] LoginDto dto)
+        {
+            var usu = await _context.Usuarios
+                .FirstOrDefaultAsync(u => u.email_usuario == dto.Correo);
+
+            if (usu == null)
+            {
+                return NotFound("Usuario no encontrado");
+            }
+
+            var hasher = new PasswordHasher<Usuario>();
+            var resultado = hasher.VerifyHashedPassword(
+                usu,
+                usu.contrasenia ?? "",
+                dto.Contrasenia ?? ""
+            );
+
+            if (resultado == PasswordVerificationResult.Failed)
+            {
+                return NotFound("Credenciales inválidas");
+            }
+
+            var numeros = RandomNumberGenerator.GetBytes(32);
+            string tokenCadena = Convert.ToBase64String(numeros);
+
+            Token n_token = new Token
+            {
+                Cadena = tokenCadena,
+                sk_usuario_id = usu.sk_usuario_id,
+                FechaExpiracion = DateTime.Now.AddMinutes(30),
+                Activo = true
+            };
+
+            _context.Token.Add(n_token);
+            await _context.SaveChangesAsync();
+
+            return Ok(new LoginResponseDto
+            {
+                Id = usu.sk_usuario_id,
+                Nombre = usu.nombre_usuario,
+                Token = tokenCadena
+            });
+        }
+
+        [HttpPost("register")]
+        public async Task<ActionResult> PostUsuario([FromBody] RegisterDto dto)
+        {
+            var existeCorreo = await _context.Usuarios
+                .AnyAsync(u => u.email_usuario == dto.Correo);
+
+            if (existeCorreo)
+            {
+                return BadRequest("El correo ya está registrado");
+            }
+
+            var nuevoUsuario = new Usuario
+            {
+                nombre_usuario = dto.Nombre,
+                email_usuario = dto.Correo
+            };
+
+            var hasher = new PasswordHasher<Usuario>();
+            nuevoUsuario.contrasenia = hasher.HashPassword(nuevoUsuario, dto.Contrasenia);
+
+            _context.Usuarios.Add(nuevoUsuario);
+            await _context.SaveChangesAsync();
+
+            return Ok(new RegisterResponseDto { Mensaje = "Usuario registrado correctamente" });
+        }
+
+        [HttpPost("logout")]
+        public async Task<ActionResult> Logout()
+        {
+            var authorization = Request.Headers["Authorization"].ToString();
+            if (authorization.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
+            {
+                authorization = authorization.Substring(7).Trim();
+            }
+
+            var token = await _context.Token
+                .FirstOrDefaultAsync(t => t.Cadena == authorization && t.Activo);
+
+            if (token != null)
+            {
+                token.Activo = false;
+                token.FechaBaja = DateTime.Now;
+                await _context.SaveChangesAsync();
+            }
+
+            return Ok();
+        }
     }
 }
 </file>
@@ -107150,126 +107276,6 @@ FROM base AS final
 WORKDIR /app
 COPY --from=publish /app/publish .
 ENTRYPOINT ["dotnet", "backend.dll"]
-</file>
-
-<file path="backend/Controllers/AuthController.cs">
-using backend.Models;
-using backend.DTOs;
-using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Identity;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using System;
-using System.Security.Cryptography;
-using System.Threading.Tasks;
-
-namespace backend.Controllers
-{
-    [Route("api/[controller]")]
-    [ApiController]
-    public class AuthController : ControllerBase
-    {
-        private readonly PruebaaspContext _context;
-
-        public AuthController(PruebaaspContext context)
-        {
-            _context = context;
-        }
-
-        [HttpPost("login")]
-        public async Task<ActionResult> Login([FromBody] LoginDto dto)
-        {
-            var usu = await _context.Usuarios
-                .FirstOrDefaultAsync(u => u.email_usuario == dto.Correo);
-
-            if (usu == null)
-            {
-                return NotFound("Usuario no encontrado");
-            }
-
-            var hasher = new PasswordHasher<Usuario>();
-            var resultado = hasher.VerifyHashedPassword(
-                usu,
-                usu.contrasenia ?? "",
-                dto.Contrasenia ?? ""
-            );
-
-            if (resultado == PasswordVerificationResult.Failed)
-            {
-                return NotFound("Credenciales inválidas");
-            }
-
-            var numeros = RandomNumberGenerator.GetBytes(32);
-            string tokenCadena = Convert.ToBase64String(numeros);
-
-            Token n_token = new Token
-            {
-                Cadena = tokenCadena,
-                sk_usuario_id = usu.sk_usuario_id,
-                FechaExpiracion = DateTime.Now.AddMinutes(30),
-                Activo = true
-            };
-
-            _context.Token.Add(n_token);
-            await _context.SaveChangesAsync();
-
-            return Ok(new LoginResponseDto
-            {
-                Id = usu.sk_usuario_id,
-                Nombre = usu.nombre_usuario,
-                Token = tokenCadena
-            });
-        }
-
-        [HttpPost("register")]
-        public async Task<ActionResult> PostUsuario([FromBody] RegisterDto dto)
-        {
-            var existeCorreo = await _context.Usuarios
-                .AnyAsync(u => u.email_usuario == dto.Correo);
-
-            if (existeCorreo)
-            {
-                return BadRequest("El correo ya está registrado");
-            }
-
-            var nuevoUsuario = new Usuario
-            {
-                nombre_usuario = dto.Nombre,
-                email_usuario = dto.Correo
-            };
-
-            var hasher = new PasswordHasher<Usuario>();
-            nuevoUsuario.contrasenia = hasher.HashPassword(nuevoUsuario, dto.Contrasenia);
-
-            _context.Usuarios.Add(nuevoUsuario);
-            await _context.SaveChangesAsync();
-
-            return Ok(new RegisterResponseDto { Mensaje = "Usuario registrado correctamente" });
-        }
-
-        [HttpPost("logout")]
-        public async Task<ActionResult> Logout()
-        {
-            var authorization = Request.Headers["Authorization"].ToString();
-            if (authorization.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
-            {
-                authorization = authorization.Substring(7).Trim();
-            }
-
-            var token = await _context.Token
-                .FirstOrDefaultAsync(t => t.Cadena == authorization && t.Activo);
-
-            if (token != null)
-            {
-                token.Activo = false;
-                token.FechaBaja = DateTime.Now;
-                await _context.SaveChangesAsync();
-            }
-
-            return Ok();
-        }
-    }
-}
 </file>
 
 <file path="backend/Controllers/HabitacionesController.cs">
@@ -109029,120 +109035,6 @@ namespace backend.Controllers
 }
 </file>
 
-<file path="backend/Middleware/RequestMiddleware.cs">
-using backend.Models;
-using Microsoft.EntityFrameworkCore;
-using System.Text;
-using System.Text.Json;
-
-namespace backend.Middleware
-{
-    public class RequestMiddleware
-    {
-        private readonly RequestDelegate _next;
-
-        public RequestMiddleware(RequestDelegate next)
-        {
-            _next = next;
-        }
-
-        public async Task InvokeAsync(HttpContext context, PruebaaspContext db)
-        {
-            
-            if (context.Request.Path.StartsWithSegments("/api"))
-            {
-                if (!context.Request.Path.Equals("/api/Auth/login") &&
-                    !context.Request.Path.Equals("/api/Auth/register"))
-                {
-                    var authorization = context.Request.Headers["Authorization"].ToString();
-
-                    if (authorization.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
-                    {
-                        authorization = authorization.Substring(7).Trim();
-                    }
-
-                    if (authorization == "799")
-                    {
-                        // Permitir acceso con token de prueba '799'
-                        context.Items["UsuarioId"] = 30002; // ID de usuario por defecto (según contexto)
-                    }
-                    else
-                    {
-                        var token = await db.Token
-                            .FirstOrDefaultAsync(t => t.Cadena == authorization && t.Activo);
-
-                        if (token == null || token.FechaExpiracion < DateTime.Now)
-                        {
-                            context.Response.StatusCode = 401;
-                            await context.Response.WriteAsync("No autorizado");
-                            return;
-                        }
-
-                        context.Items["UsuarioId"] = token.sk_usuario_id;
-                        token.FechaExpiracion = DateTime.Now.AddMonths(1);
-                        await db.SaveChangesAsync();
-                    }
-                } 
-
-                var originalBodyStream = context.Response.Body;
-
-                using var responseBody = new MemoryStream();
-                context.Response.Body = responseBody;
-
-                await _next(context);
-
-                if (context.Response.StatusCode == 204 || context.Response.StatusCode == 304)
-                {
-                    context.Response.Body = originalBodyStream;
-                    return;
-                }
-
-                responseBody.Seek(0, SeekOrigin.Begin);
-
-                var responseText = await new StreamReader(responseBody).ReadToEndAsync();
-
-                responseBody.Seek(0, SeekOrigin.Begin);
-
-                object? data = null;
-
-                try
-                {
-                    data = JsonSerializer.Deserialize<object>(responseText);
-                }
-                catch
-                {
-                    data = responseText;
-                }
-
-                var responseFormat = new
-                {
-                    success = context.Response.StatusCode >= 200 &&
-                              context.Response.StatusCode < 300,
-
-                    status = context.Response.StatusCode,
-
-                    data = data
-                };
-
-                var jsonResponse = JsonSerializer.Serialize(responseFormat);
-
-                context.Response.ContentType = "application/json";
-
-                var bytes = Encoding.UTF8.GetBytes(jsonResponse);
-
-                context.Response.ContentLength = bytes.Length;
-
-                await originalBodyStream.WriteAsync(bytes, 0, bytes.Length);
-            }
-            else
-            {
-                await _next(context);
-            }
-        }
-    }
-}
-</file>
-
 <file path="backend/Controllers/GestosController.cs">
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -109593,6 +109485,120 @@ namespace backend.DTOs
 
         [JsonPropertyName("fecha_medicion_consumo")]
         public DateTime? FechaMedicionConsumo { get; set; }
+    }
+}
+</file>
+
+<file path="backend/Middleware/RequestMiddleware.cs">
+using backend.Models;
+using Microsoft.EntityFrameworkCore;
+using System.Text;
+using System.Text.Json;
+
+namespace backend.Middleware
+{
+    public class RequestMiddleware
+    {
+        private readonly RequestDelegate _next;
+
+        public RequestMiddleware(RequestDelegate next)
+        {
+            _next = next;
+        }
+
+        public async Task InvokeAsync(HttpContext context, PruebaaspContext db)
+        {
+            
+            if (context.Request.Path.StartsWithSegments("/api"))
+            {
+                if (!context.Request.Path.Equals("/api/Auth/login") &&
+                    !context.Request.Path.Equals("/api/Auth/register"))
+                {
+                    var authorization = context.Request.Headers["Authorization"].ToString();
+
+                    if (authorization.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
+                    {
+                        authorization = authorization.Substring(7).Trim();
+                    }
+
+                    if (authorization == "799")
+                    {
+                        // Permitir acceso con token de prueba '799'
+                        context.Items["UsuarioId"] = 30002; // ID de usuario por defecto (según contexto)
+                    }
+                    else
+                    {
+                        var token = await db.Token
+                            .FirstOrDefaultAsync(t => t.Cadena == authorization && t.Activo);
+
+                        if (token == null || token.FechaExpiracion < DateTime.Now)
+                        {
+                            context.Response.StatusCode = 401;
+                            await context.Response.WriteAsync("No autorizado");
+                            return;
+                        }
+
+                        context.Items["UsuarioId"] = token.sk_usuario_id;
+                        token.FechaExpiracion = DateTime.Now.AddMonths(1);
+                        await db.SaveChangesAsync();
+                    }
+                } 
+
+                var originalBodyStream = context.Response.Body;
+
+                using var responseBody = new MemoryStream();
+                context.Response.Body = responseBody;
+
+                await _next(context);
+
+                if (context.Response.StatusCode == 204 || context.Response.StatusCode == 304)
+                {
+                    context.Response.Body = originalBodyStream;
+                    return;
+                }
+
+                responseBody.Seek(0, SeekOrigin.Begin);
+
+                var responseText = await new StreamReader(responseBody).ReadToEndAsync();
+
+                responseBody.Seek(0, SeekOrigin.Begin);
+
+                object? data = null;
+
+                try
+                {
+                    data = JsonSerializer.Deserialize<object>(responseText);
+                }
+                catch
+                {
+                    data = responseText;
+                }
+
+                var responseFormat = new
+                {
+                    success = context.Response.StatusCode >= 200 &&
+                              context.Response.StatusCode < 300,
+
+                    status = context.Response.StatusCode,
+
+                    data = data
+                };
+
+                var jsonResponse = JsonSerializer.Serialize(responseFormat);
+
+                context.Response.ContentType = "application/json";
+
+                var bytes = Encoding.UTF8.GetBytes(jsonResponse);
+
+                context.Response.ContentLength = bytes.Length;
+
+                await originalBodyStream.WriteAsync(bytes, 0, bytes.Length);
+            }
+            else
+            {
+                await _next(context);
+            }
+        }
     }
 }
 </file>
@@ -111072,6 +111078,7 @@ using Microsoft.AspNetCore.Mvc;
 using System.Net.WebSockets;
 using System.Text;
 using Microsoft.EntityFrameworkCore;
+using System.Net.Sockets;
 
 namespace backend.Controllers
 {
@@ -111233,9 +111240,46 @@ namespace backend.Controllers
         }
 
         [HttpGet("status/all")]
-        public IActionResult GetAllStatus()
+        public async Task<IActionResult> GetAllStatus([FromServices] PruebaaspContext context)
         {
-            var connectedDevices = _connections.GetAllConnectedDeviceKeys();
+            var connectedDevices = _connections.GetAllConnectedDeviceKeys().ToList();
+
+            // Buscar dispositivos WIFI/LAN locales en la BD
+            var localDevices = await context.Aparatos
+                .Include(a => a.ConfiguracionRed)
+                .Where(a => (a.metodo_vinculacion == "WIFI" || a.metodo_vinculacion == "LAN") 
+                            && a.ConfiguracionRed != null 
+                            && !string.IsNullOrEmpty(a.ConfiguracionRed.ip_address))
+                .ToListAsync();
+
+            if (localDevices.Any())
+            {
+                var tasks = localDevices.Select(async device =>
+                {
+                    try
+                    {
+                        var ip = device.ConfiguracionRed!.ip_address;
+                        using var client = new TcpClient();
+                        // Ping rápido con timeout de 1 segundo (1000ms)
+                        var connectTask = client.ConnectAsync(ip!, 5577);
+                        if (await Task.WhenAny(connectTask, Task.Delay(1000)) == connectTask)
+                        {
+                            // Conexion exitosa, reportar como en línea usando su IP o device_key según convenga
+                            // El frontend podría estar usando deviceKey o IP, añadimos el deviceKey si existe, o la IP.
+                            var identifier = !string.IsNullOrEmpty(device.ConfiguracionRed.device_key) 
+                                                ? device.ConfiguracionRed.device_key 
+                                                : ip;
+                            return identifier;
+                        }
+                    }
+                    catch { }
+                    return null;
+                });
+
+                var onlineLocalDevices = (await Task.WhenAll(tasks)).Where(id => id != null);
+                connectedDevices.AddRange(onlineLocalDevices!);
+            }
+
             return Ok(new { connectedDevices });
         }
 
@@ -111284,22 +111328,49 @@ namespace backend.Controllers
                 .Include(c => c.Aparato)
                 .FirstOrDefault(c => c.sk_aparato_id == sk_aparato_id);
                 
-            if (config == null || string.IsNullOrWhiteSpace(config.device_key))
+            if (config == null || (string.IsNullOrWhiteSpace(config.device_key) && string.IsNullOrWhiteSpace(config.ip_address)))
             {
-                return NotFound("El aparato no tiene configuración de red o deviceKey.");
-            }
-
-            if (!_connections.TryGetOpenSocket(config.device_key, out var socket))
-            {
-                return BadRequest("El dispositivo no está conectado actualmente.");
+                return NotFound("El aparato no tiene configuración de red válida.");
             }
 
             string comando = estado ? "ON" : "OFF";
-            await socket!.SendAsync(
-                Encoding.UTF8.GetBytes(comando),
-                WebSocketMessageType.Text,
-                true,
-                cancellationToken);
+            bool esWifiLocal = config.Aparato?.metodo_vinculacion == "WIFI" || config.Aparato?.metodo_vinculacion == "LAN";
+
+            if (esWifiLocal)
+            {
+                if (string.IsNullOrWhiteSpace(config.ip_address))
+                {
+                    return BadRequest("El dispositivo WIFI/LAN no tiene IP configurada.");
+                }
+                
+                try
+                {
+                    using var client = new TcpClient();
+                    await client.ConnectAsync(config.ip_address, 5577);
+                    byte[] commandBytes = estado 
+                        ? new byte[] { 0x71, 0x23, 0x0F, 0xA3 } 
+                        : new byte[] { 0x71, 0x24, 0x0F, 0xA4 };
+                    await client.GetStream().WriteAsync(commandBytes, 0, commandBytes.Length, cancellationToken);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error conectando al socket TCP WIFI/LAN en IP: {ip}", config.ip_address);
+                    return BadRequest("Fallo al conectar con el dispositivo WIFI/LAN en red local.");
+                }
+            }
+            else
+            {
+                if (!_connections.TryGetOpenSocket(config.device_key!, out var socket))
+                {
+                    return BadRequest("El dispositivo no está conectado actualmente.");
+                }
+
+                await socket!.SendAsync(
+                    Encoding.UTF8.GetBytes(comando),
+                    WebSocketMessageType.Text,
+                    true,
+                    cancellationToken);
+            }
 
             await _stateService.ProcessOutboundCommandAsync(
                 config.sk_aparato_configuracion_red_id,
@@ -111307,7 +111378,7 @@ namespace backend.Controllers
                 estado,
                 "toggle",
                 cancellationToken);
-                
+
             // === GUARDAR HISTORIAL DE ACTIVIDAD ===
             try
             {
@@ -112849,7 +112920,7 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("AngularPolicy", policy =>
     {
-        policy.WithOrigins("http://localhost:4200", "https://frontend-itgu.onrender.com")
+        policy.WithOrigins("http://localhost:4200", "https://frontend-itgu.onrender.com", "https://manordomo-web.onrender.com")
               .AllowAnyHeader()
               .AllowAnyMethod()
               .AllowCredentials();

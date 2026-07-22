@@ -366,7 +366,7 @@ namespace backend.Services
                     CorrienteA = ReadDecimal(root, "corriente"),
                     PotenciaW = ReadDecimal(root, "potencia"),
                     EnergiaWh = ReadDecimal(root, "energia"),
-                    EstadoEncendido = ReadBoolean(root, "estado1", "encendido1", "rele1") ?? TryParsePowerState(message),
+                    EstadoEncendido = ReadBoolean(root, "estado1", "encendido1", "rele1") ?? ReadBoolean(root, "encendido") ?? TryParsePowerState(message),
                     EstadoEncendido2 = ReadBoolean(root, "estado2", "encendido2", "rele2"),
                     EstadoEncendido3 = ReadBoolean(root, "estado3", "encendido3", "rele3"),
                     EstadoEncendido4 = ReadBoolean(root, "estado4", "encendido4", "rele4")

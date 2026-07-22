@@ -31,6 +31,9 @@ namespace backend.DTOs
         [JsonPropertyName("sk_aparato_id")]
         public int? SkAparatoId { get; set; }
 
+        [JsonPropertyName("contacto_outlet")]
+        public int? ContactoOutlet { get; set; }
+
         [JsonPropertyName("pasos")]
         public List<GestoPasoDto>? Pasos { get; set; }
     }

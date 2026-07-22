@@ -33,6 +33,8 @@ namespace backend.Models
 
         public int? sk_aparato_id { get; set; }
 
+        public int? contacto_outlet { get; set; }
+
         [ForeignKey("sk_aparato_id")]
         public Aparato? Aparato { get; set; }
 

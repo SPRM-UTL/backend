@@ -254,6 +254,7 @@ public partial class PruebaaspContext : DbContext
             entity.Property(e => e.nivel_confianza_minimo).HasColumnName("nivel_confianza_minimo");
             entity.Property(e => e.tipo_disparador_nombre).HasMaxLength(100).HasColumnName("tipo_disparador_nombre");
             entity.Property(e => e.sk_aparato_id).HasColumnName("sk_aparato_id");
+            entity.Property(e => e.contacto_outlet).HasColumnName("contacto_outlet");
             entity.Property(e => e.sk_usuario_id).HasColumnName("sk_usuario_id");
         });
 

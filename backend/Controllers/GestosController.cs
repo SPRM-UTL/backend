@@ -59,6 +59,7 @@ public class GestosController : ControllerBase
                 TipoDisparadorNombre = g.tipo_disparador_nombre,
                 FraseVozActivadora = g.frase_voz_activadora,
                 SkAparatoId = g.sk_aparato_id,
+                ContactoOutlet = g.contacto_outlet,
                 Pasos = g.PasosSecuencia.Select(p => new GestoPasoDto
                 {
                     SkGestoPasoId = p.sk_gesto_paso_id,
@@ -90,6 +91,7 @@ public class GestosController : ControllerBase
                 TipoDisparadorNombre = g.tipo_disparador_nombre,
                 FraseVozActivadora = g.frase_voz_activadora,
                 SkAparatoId = g.sk_aparato_id,
+                ContactoOutlet = g.contacto_outlet,
                 Pasos = g.PasosSecuencia.Select(p => new GestoPasoDto
                 {
                     SkGestoPasoId = p.sk_gesto_paso_id,
@@ -347,6 +349,7 @@ public class GestosController : ControllerBase
         TipoDisparadorNombre = gesto.tipo_disparador_nombre,
         FraseVozActivadora = gesto.frase_voz_activadora,
         SkAparatoId = gesto.sk_aparato_id,
+        ContactoOutlet = gesto.contacto_outlet,
         Pasos = gesto.PasosSecuencia?.Select(p => new GestoPasoDto
         {
             SkGestoPasoId = p.sk_gesto_paso_id,
@@ -368,5 +371,6 @@ public class GestosController : ControllerBase
         gesto.tipo_disparador_nombre = dto.TipoDisparadorNombre;
         gesto.frase_voz_activadora = dto.FraseVozActivadora;
         gesto.sk_aparato_id = dto.SkAparatoId;
+        gesto.contacto_outlet = dto.ContactoOutlet;
     }
 }
