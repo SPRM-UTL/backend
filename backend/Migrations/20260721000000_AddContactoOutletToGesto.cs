@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace backend.Migrations
 {
     /// <inheritdoc />
+    [Migration("20260721000000_AddContactoOutletToGesto")]
     public partial class AddContactoOutletToGesto : Migration
     {
         /// <inheritdoc />
