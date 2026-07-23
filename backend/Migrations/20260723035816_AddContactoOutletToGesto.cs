@@ -1,11 +1,10 @@
-using Microsoft.EntityFrameworkCore.Migrations;
+﻿using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
 namespace backend.Migrations
 {
     /// <inheritdoc />
-    [Migration("20260721000000_AddContactoOutletToGesto")]
     public partial class AddContactoOutletToGesto : Migration
     {
         /// <inheritdoc />
