@@ -385,6 +385,14 @@ public class AparatosController : ControllerBase
                 _context.HistorialActividades.RemoveRange(historialActividades);
             }
 
+            var configuracionRed = await _context.AparatoConfiguracionesRed
+                .FirstOrDefaultAsync(c => c.sk_aparato_id == aparatoId);
+
+            if (configuracionRed != null)
+            {
+                _context.AparatoConfiguracionesRed.Remove(configuracionRed);
+            }
+
             _context.Aparatos.Remove(aparato);
             await _context.SaveChangesAsync();
 

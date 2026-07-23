@@ -125,6 +125,8 @@ backend/Migrations/20260710071555_AddCatalogoGestos.cs
 backend/Migrations/20260710071555_AddCatalogoGestos.Designer.cs
 backend/Migrations/20260714025253_AddMetodoVinculacion.cs
 backend/Migrations/20260714025253_AddMetodoVinculacion.Designer.cs
+backend/Migrations/20260721000000_AddContactoOutletToGesto.cs
+backend/Migrations/20260721000000_AddContactoOutletToGesto.sql
 backend/Migrations/PruebaaspContextModelSnapshot.cs
 backend/Models/Aparato.cs
 backend/Models/AparatoAccion.cs
@@ -100498,6 +100500,46 @@ namespace backend.Migrations
 }
 </file>
 
+<file path="backend/Migrations/20260721000000_AddContactoOutletToGesto.cs">
+using Microsoft.EntityFrameworkCore.Migrations;
+
+#nullable disable
+
+namespace backend.Migrations
+{
+    /// <inheritdoc />
+    public partial class AddContactoOutletToGesto : Migration
+    {
+        /// <inheritdoc />
+        protected override void Up(MigrationBuilder migrationBuilder)
+        {
+            migrationBuilder.AddColumn<int>(
+                name: "contacto_outlet",
+                table: "gesto",
+                type: "int",
+                nullable: true);
+        }
+
+        /// <inheritdoc />
+        protected override void Down(MigrationBuilder migrationBuilder)
+        {
+            migrationBuilder.DropColumn(
+                name: "contacto_outlet",
+                table: "gesto");
+        }
+    }
+}
+</file>
+
+<file path="backend/Migrations/20260721000000_AddContactoOutletToGesto.sql">
+-- Migración: Agregar columna contacto_outlet a la tabla gesto
+-- Ejecutar en la base de datos MySQL antes de iniciar el backend
+
+ALTER TABLE `gesto`
+ADD COLUMN `contacto_outlet` INT NULL DEFAULT NULL
+AFTER `sk_aparato_id`;
+</file>
+
 <file path="backend/Models/AparatoAccion.cs">
 using System.ComponentModel.DataAnnotations;
 using System.Text.Json.Serialization;
@@ -107847,46 +107889,6 @@ public class CasasController : ControllerBase
 }
 </file>
 
-<file path="backend/DTOs/GestoDto.cs">
-using System.Text.Json.Serialization;
-
-namespace backend.DTOs
-{
-    public class GestoDto
-    {
-        [JsonPropertyName("sk_gesto_id")]
-        public int SkGestoId { get; set; }
-
-        [JsonPropertyName("bk_gesto_id")]
-        public int BkGestoId { get; set; }
-
-        [JsonPropertyName("nombre_gesto")]
-        public string? NombreGesto { get; set; }
-
-        [JsonPropertyName("icono")]
-        public string? Icono { get; set; }
-
-        [JsonPropertyName("identificador_ia")]
-        public int IdentificadorIa { get; set; }
-
-        [JsonPropertyName("nivel_confianza_minimo")]
-        public decimal NivelConfianzaMinimo { get; set; }
-
-        [JsonPropertyName("tipo_disparador_nombre")]
-        public string? TipoDisparadorNombre { get; set; }
-
-        [JsonPropertyName("frase_voz_activadora")]
-        public string? FraseVozActivadora { get; set; }
-
-        [JsonPropertyName("sk_aparato_id")]
-        public int? SkAparatoId { get; set; }
-
-        [JsonPropertyName("pasos")]
-        public List<GestoPasoDto>? Pasos { get; set; }
-    }
-}
-</file>
-
 <file path="backend/Models/Aparato.cs">
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
@@ -108032,57 +108034,6 @@ namespace backend.Models
 }
 </file>
 
-<file path="backend/Models/Gesto.cs">
-using System.ComponentModel.DataAnnotations;
-using System.ComponentModel.DataAnnotations.Schema;
-using System.Text.Json.Serialization;
-
-namespace backend.Models
-{
-    public class Gesto
-    {
-        [Key]
-        public int sk_gesto_id { get; set; }
-
-        public int bk_gesto_id { get; set; }
-
-        [MaxLength(100)]
-        public string? nombre_gesto { get; set; }
-        
-        [MaxLength(50)]
-        public string? icono { get; set; }
-
-        public int identificador_ia { get; set; }
-
-        [Column(TypeName = "decimal(5,2)")]
-        public decimal nivel_confianza_minimo { get; set; }
-
-        [MaxLength(100)]
-        public string? tipo_disparador_nombre { get; set; }
-
-        [MaxLength(150)]
-        public string? frase_voz_activadora { get; set; }
-
-        [JsonIgnore]
-        public List<HistorialActividad>? Historico_Actividad { get; set; }
-
-        public int? sk_aparato_id { get; set; }
-
-        [ForeignKey("sk_aparato_id")]
-        public Aparato? Aparato { get; set; }
-
-        public int? sk_usuario_id { get; set; }
-
-        [ForeignKey("sk_usuario_id")]
-        [JsonIgnore]
-        public Usuario? Usuario { get; set; }
-
-        [JsonIgnore]
-        public virtual ICollection<GestoPaso> PasosSecuencia { get; set; } = new List<GestoPaso>();
-    }
-}
-</file>
-
 <file path="backend/Models/Usuario.cs">
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
@@ -108143,6 +108094,383 @@ namespace backend.Models
 
         [JsonIgnore]
         public virtual ICollection<UsuarioGestoConfig> UsuarioGestosConfig { get; set; } = new List<UsuarioGestoConfig>();
+    }
+}
+</file>
+
+<file path="backend/Controllers/UsuariosApiController.cs">
+using backend.Models;
+using backend.DTOs; // Acceso a tus DTOs en español
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+
+namespace backend.Controllers
+{
+    [Route("api/UsuariosApi")]
+    [Route("api/usuarios")]
+    [ApiController]
+    public class UsuariosApiController : ControllerBase
+    {
+        private readonly PruebaaspContext _context;
+
+        public UsuariosApiController(PruebaaspContext context)
+        {
+            _context = context;
+        }
+
+        private const long MaxProfileImageBytes = 5 * 1024 * 1024;
+        private static readonly HashSet<string> AllowedProfileImageExtensions = new(StringComparer.OrdinalIgnoreCase)
+        {
+            ".jpg",
+            ".jpeg",
+            ".png"
+        };
+
+        // GET: api/UsuariosApi
+        [HttpGet]
+        public async Task<ActionResult<IEnumerable<UsuarioProfileDto>>> GetUsuarios()
+        {
+            return await _context.Usuarios
+                .Select(u => new
+                UsuarioProfileDto
+                {
+                    Id = u.sk_usuario_id,
+                    Nombre = u.nombre_usuario,
+                    Correo = u.email_usuario,
+                    RutaImagen = u.ruta_imagen
+                })
+                .ToListAsync();
+        }
+
+        // GET: api/UsuariosApi/5
+        [HttpGet("{id}")]
+        public async Task<ActionResult> GetUsuario(int id)
+        {
+            var usuario = await _context.Usuarios
+                .Where(u => u.sk_usuario_id == id)
+                .Select(u => new UsuarioProfileDto
+                {
+                    Id = u.sk_usuario_id,
+                    Nombre = u.nombre_usuario,
+                    Correo = u.email_usuario,
+                    RutaImagen = u.ruta_imagen
+                })
+                .FirstOrDefaultAsync();
+
+            if (usuario == null)
+            {
+                return NotFound();
+            }
+
+            return Ok(usuario);
+        }
+
+        // PUT: api/UsuariosApi/5
+        [HttpPut("{id}")]
+        public async Task<IActionResult> PutUsuario(int id, [FromBody] RegisterDto dto)
+        {
+            // Nota: Reutilizamos RegisterDto ya que contiene Nombre, Correo y Contrasenia
+            var usuarioExistente = await _context.Usuarios.FindAsync(id);
+            if (usuarioExistente == null)
+            {
+                return NotFound("Usuario no encontrado.");
+            }
+
+            usuarioExistente.nombre_usuario = dto.Nombre;
+            usuarioExistente.email_usuario = dto.Correo;
+            if (dto.RutaImagen != null)
+            {
+                usuarioExistente.ruta_imagen = dto.RutaImagen;
+            }
+
+            if (!string.IsNullOrWhiteSpace(dto.Contrasenia))
+            {
+                var hasher = new PasswordHasher<Usuario>();
+                usuarioExistente.contrasenia = hasher.HashPassword(usuarioExistente, dto.Contrasenia);
+            }
+
+            try
+            {
+                await _context.SaveChangesAsync();
+            }
+            catch (DbUpdateConcurrencyException)
+            {
+                if (!UsuarioExists(id))
+                {
+                    return NotFound();
+                }
+                else
+                {
+                    throw;
+                }
+            }
+
+            return Ok(new
+            {
+                mensaje = "Perfil actualizado correctamente"
+            });
+        }
+
+        // POST: api/UsuariosApi
+        [HttpPost]
+        public async Task<ActionResult> PostUsuario([FromBody] RegisterDto dto)
+        {
+            var existeCorreo = await _context.Usuarios
+                .AnyAsync(u => u.email_usuario == dto.Correo);
+
+            if (existeCorreo)
+            {
+                return BadRequest("El correo ya está registrado");
+            }
+
+            var nuevoUsuario = new Usuario
+            {
+                nombre_usuario = dto.Nombre,
+                email_usuario = dto.Correo,
+                ruta_imagen = dto.RutaImagen
+            };
+
+            var hasher = new PasswordHasher<Usuario>();
+            nuevoUsuario.contrasenia = hasher.HashPassword(nuevoUsuario, dto.Contrasenia);
+
+            _context.Usuarios.Add(nuevoUsuario);
+            await _context.SaveChangesAsync();
+
+            return CreatedAtAction(
+                "GetUsuario",
+                new { id = nuevoUsuario.sk_usuario_id },
+                new UsuarioProfileDto
+                {
+                    Id = nuevoUsuario.sk_usuario_id,
+                    Nombre = nuevoUsuario.nombre_usuario,
+                    Correo = nuevoUsuario.email_usuario,
+                    RutaImagen = nuevoUsuario.ruta_imagen
+                }
+            );
+        }
+
+        [HttpPost("perfil/imagen")]
+        [HttpPost("/api/UsuariosDimension/perfil/imagen")]
+        [RequestSizeLimit(MaxProfileImageBytes)]
+        public async Task<ActionResult> UploadProfileImage(
+            [FromForm(Name = "imagen")] IFormFile? imagen,
+            [FromForm] int? usuarioId)
+        {
+            if (imagen == null || imagen.Length == 0)
+            {
+                return BadRequest("Selecciona una imagen válida.");
+            }
+
+            if (imagen.Length > MaxProfileImageBytes)
+            {
+                return BadRequest("La imagen no debe exceder 5 MB.");
+            }
+
+            var extension = Path.GetExtension(imagen.FileName);
+            if (string.IsNullOrWhiteSpace(extension) || !AllowedProfileImageExtensions.Contains(extension))
+            {
+                return BadRequest("Solo se permiten imágenes JPG o PNG.");
+            }
+
+            if (imagen.ContentType == null || !imagen.ContentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase))
+            {
+                return BadRequest("El archivo enviado no parece ser una imagen.");
+            }
+
+            var userIdFromToken = HttpContext.Items["UsuarioId"] as int?;
+            var targetUserId = userIdFromToken ?? usuarioId;
+            if (targetUserId == null || targetUserId <= 0)
+            {
+                return BadRequest("No se pudo identificar al usuario.");
+            }
+
+            var usuario = await _context.Usuarios.FindAsync(targetUserId.Value);
+            if (usuario == null)
+            {
+                return NotFound("Usuario no encontrado.");
+            }
+
+            var webRootPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot");
+            var uploadDirectory = Path.Combine(webRootPath, "uploads", "perfiles", targetUserId.Value.ToString());
+            Directory.CreateDirectory(uploadDirectory);
+
+            var safeExtension = extension.Equals(".png", StringComparison.OrdinalIgnoreCase) ? ".png" : ".jpg";
+            var fileName = $"perfil-{Guid.NewGuid():N}{safeExtension}";
+            var filePath = Path.Combine(uploadDirectory, fileName);
+
+            await using (var stream = System.IO.File.Create(filePath))
+            {
+                await imagen.CopyToAsync(stream);
+            }
+
+            var relativePath = $"/uploads/perfiles/{targetUserId.Value}/{fileName}";
+            usuario.ruta_imagen = relativePath;
+            await _context.SaveChangesAsync();
+
+            var absoluteUrl = $"{Request.Scheme}://{Request.Host}{relativePath}";
+            return Ok(new
+            {
+                ruta_imagen = relativePath,
+                url_imagen = absoluteUrl
+            });
+        }
+
+        // GET: api/usuarios/5/voz-config
+        [HttpGet("{id}/voz-config")]
+        public async Task<ActionResult<UsuarioVozConfigDto>> GetVozConfig(int id)
+        {
+            var usuario = await _context.Usuarios.FindAsync(id);
+            if (usuario == null) return NotFound();
+
+            return Ok(new UsuarioVozConfigDto
+            {
+                ControlVozActivado = usuario.control_voz_activado,
+                ConfirmacionHabladaActivada = usuario.confirmacion_hablada_activada,
+                VozTipoSeleccionado = usuario.voz_tipo_seleccionado,
+                VozVelocidad = usuario.voz_velocidad,
+                VozIdioma = usuario.voz_idioma
+            });
+        }
+
+        // PUT: api/usuarios/5/voz-config
+        [HttpPut("{id}/voz-config")]
+        public async Task<IActionResult> PutVozConfig(int id, [FromBody] UsuarioVozConfigDto dto)
+        {
+            var usuario = await _context.Usuarios.FindAsync(id);
+            if (usuario == null) return NotFound();
+
+            usuario.control_voz_activado = dto.ControlVozActivado;
+            usuario.confirmacion_hablada_activada = dto.ConfirmacionHabladaActivada;
+            usuario.voz_tipo_seleccionado = dto.VozTipoSeleccionado;
+            usuario.voz_velocidad = dto.VozVelocidad;
+            usuario.voz_idioma = dto.VozIdioma;
+
+            await _context.SaveChangesAsync();
+            return Ok(new { mensaje = "Configuración de voz actualizada" });
+        }
+
+        // DELETE: api/UsuariosApi/5
+        [HttpDelete("{id}")]
+        public async Task<IActionResult> DeleteUsuario(int id)
+        {
+            var usuario = await _context.Usuarios.FindAsync(id);
+            if (usuario == null)
+            {
+                return NotFound();
+            }
+
+            _context.Usuarios.Remove(usuario);
+            await _context.SaveChangesAsync();
+
+            return NoContent();
+        }
+
+        private bool UsuarioExists(int id)
+        {
+            return _context.Usuarios.Any(e => e.sk_usuario_id == id);
+        }
+    }
+}
+</file>
+
+<file path="backend/DTOs/GestoDto.cs">
+using System.Text.Json.Serialization;
+
+namespace backend.DTOs
+{
+    public class GestoDto
+    {
+        [JsonPropertyName("sk_gesto_id")]
+        public int SkGestoId { get; set; }
+
+        [JsonPropertyName("bk_gesto_id")]
+        public int BkGestoId { get; set; }
+
+        [JsonPropertyName("nombre_gesto")]
+        public string? NombreGesto { get; set; }
+
+        [JsonPropertyName("icono")]
+        public string? Icono { get; set; }
+
+        [JsonPropertyName("identificador_ia")]
+        public int IdentificadorIa { get; set; }
+
+        [JsonPropertyName("nivel_confianza_minimo")]
+        public decimal NivelConfianzaMinimo { get; set; }
+
+        [JsonPropertyName("tipo_disparador_nombre")]
+        public string? TipoDisparadorNombre { get; set; }
+
+        [JsonPropertyName("frase_voz_activadora")]
+        public string? FraseVozActivadora { get; set; }
+
+        [JsonPropertyName("sk_aparato_id")]
+        public int? SkAparatoId { get; set; }
+
+        [JsonPropertyName("contacto_outlet")]
+        public int? ContactoOutlet { get; set; }
+
+        [JsonPropertyName("pasos")]
+        public List<GestoPasoDto>? Pasos { get; set; }
+    }
+}
+</file>
+
+<file path="backend/Models/Gesto.cs">
+using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
+using System.Text.Json.Serialization;
+
+namespace backend.Models
+{
+    public class Gesto
+    {
+        [Key]
+        public int sk_gesto_id { get; set; }
+
+        public int bk_gesto_id { get; set; }
+
+        [MaxLength(100)]
+        public string? nombre_gesto { get; set; }
+        
+        [MaxLength(50)]
+        public string? icono { get; set; }
+
+        public int identificador_ia { get; set; }
+
+        [Column(TypeName = "decimal(5,2)")]
+        public decimal nivel_confianza_minimo { get; set; }
+
+        [MaxLength(100)]
+        public string? tipo_disparador_nombre { get; set; }
+
+        [MaxLength(150)]
+        public string? frase_voz_activadora { get; set; }
+
+        [JsonIgnore]
+        public List<HistorialActividad>? Historico_Actividad { get; set; }
+
+        public int? sk_aparato_id { get; set; }
+
+        public int? contacto_outlet { get; set; }
+
+        [ForeignKey("sk_aparato_id")]
+        public Aparato? Aparato { get; set; }
+
+        public int? sk_usuario_id { get; set; }
+
+        [ForeignKey("sk_usuario_id")]
+        [JsonIgnore]
+        public Usuario? Usuario { get; set; }
+
+        [JsonIgnore]
+        public virtual ICollection<GestoPaso> PasosSecuencia { get; set; } = new List<GestoPaso>();
     }
 }
 </file>
@@ -108516,7 +108844,7 @@ namespace backend.Services
                     CorrienteA = ReadDecimal(root, "corriente"),
                     PotenciaW = ReadDecimal(root, "potencia"),
                     EnergiaWh = ReadDecimal(root, "energia"),
-                    EstadoEncendido = ReadBoolean(root, "estado1", "encendido1", "rele1") ?? TryParsePowerState(message),
+                    EstadoEncendido = ReadBoolean(root, "estado1", "encendido1", "rele1") ?? ReadBoolean(root, "encendido") ?? TryParsePowerState(message),
                     EstadoEncendido2 = ReadBoolean(root, "estado2", "encendido2", "rele2"),
                     EstadoEncendido3 = ReadBoolean(root, "estado3", "encendido3", "rele3"),
                     EstadoEncendido4 = ReadBoolean(root, "estado4", "encendido4", "rele4")
@@ -108754,282 +109082,194 @@ namespace backend.Services
 }
 </file>
 
-<file path="backend/Controllers/UsuariosApiController.cs">
-using backend.Models;
-using backend.DTOs; // Acceso a tus DTOs en español
-using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Identity;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
+<file path="backend/DTOs/AparatoDto.cs">
+using System.Text.Json.Serialization;
 
-namespace backend.Controllers
+namespace backend.DTOs
 {
-    [Route("api/UsuariosApi")]
-    [Route("api/usuarios")]
-    [ApiController]
-    public class UsuariosApiController : ControllerBase
+    public class AparatoDto
     {
-        private readonly PruebaaspContext _context;
+        [JsonPropertyName("sk_aparato_id")]
+        public int SkAparatoId { get; set; }
 
-        public UsuariosApiController(PruebaaspContext context)
+        [JsonPropertyName("nombre_aparato")]
+        public string? NombreAparato { get; set; }
+
+        [JsonPropertyName("tipo_aparato")]
+        public string? TipoAparato { get; set; }
+
+        [JsonPropertyName("accion_nombre")]
+        public string? AccionNombre { get; set; }
+
+        [JsonPropertyName("comando_bluetooth")]
+        public string? ComandoBluetooth { get; set; }
+
+        [JsonPropertyName("icono")]
+        public string? Icono { get; set; }
+
+        [JsonPropertyName("metodo_vinculacion")]
+        public string? MetodoVinculacion { get; set; }
+
+        [JsonPropertyName("mac_bluetooth")]
+        public string? MacBluetooth { get; set; }
+
+        [JsonPropertyName("nombre_bluetooth")]
+        public string? NombreBluetooth { get; set; }
+
+        [JsonPropertyName("fecha_sincronizacion")]
+        public DateTime? FechaSincronizacion { get; set; }
+
+        [JsonPropertyName("sk_habitacion_id")]
+        public int? SkHabitacionId { get; set; }
+
+        [JsonPropertyName("nombre_habitacion")]
+        public string? NombreHabitacion { get; set; }
+
+        [JsonPropertyName("estado_encendido")]
+        public bool? EstadoEncendido { get; set; }
+
+        [JsonPropertyName("estado_encendido_2")]
+        public bool? EstadoEncendido2 { get; set; }
+
+        [JsonPropertyName("estado_encendido_3")]
+        public bool? EstadoEncendido3 { get; set; }
+
+        [JsonPropertyName("estado_encendido_4")]
+        public bool? EstadoEncendido4 { get; set; }
+
+        [JsonPropertyName("conectado_red")]
+        public bool? ConectadoRed { get; set; }
+
+        [JsonPropertyName("ip_address")]
+        public string? IpAddress { get; set; }
+
+        [JsonPropertyName("fecha_estado_actualizado")]
+        public DateTime? FechaEstadoActualizado { get; set; }
+
+        [JsonPropertyName("corriente_a")]
+        public decimal? CorrienteA { get; set; }
+
+        [JsonPropertyName("potencia_w")]
+        public decimal? PotenciaW { get; set; }
+
+        [JsonPropertyName("energia_acumulada_wh")]
+        public decimal? EnergiaAcumuladaWh { get; set; }
+
+        [JsonPropertyName("fecha_medicion_consumo")]
+        public DateTime? FechaMedicionConsumo { get; set; }
+    }
+}
+</file>
+
+<file path="backend/Middleware/RequestMiddleware.cs">
+using backend.Models;
+using Microsoft.EntityFrameworkCore;
+using System.Text;
+using System.Text.Json;
+
+namespace backend.Middleware
+{
+    public class RequestMiddleware
+    {
+        private readonly RequestDelegate _next;
+
+        public RequestMiddleware(RequestDelegate next)
         {
-            _context = context;
+            _next = next;
         }
 
-        private const long MaxProfileImageBytes = 5 * 1024 * 1024;
-        private static readonly HashSet<string> AllowedProfileImageExtensions = new(StringComparer.OrdinalIgnoreCase)
+        public async Task InvokeAsync(HttpContext context, PruebaaspContext db)
         {
-            ".jpg",
-            ".jpeg",
-            ".png"
-        };
-
-        // GET: api/UsuariosApi
-        [HttpGet]
-        public async Task<ActionResult<IEnumerable<UsuarioProfileDto>>> GetUsuarios()
-        {
-            return await _context.Usuarios
-                .Select(u => new
-                UsuarioProfileDto
+            
+            if (context.Request.Path.StartsWithSegments("/api"))
+            {
+                if (!context.Request.Path.Equals("/api/Auth/login") &&
+                    !context.Request.Path.Equals("/api/Auth/register"))
                 {
-                    Id = u.sk_usuario_id,
-                    Nombre = u.nombre_usuario,
-                    Correo = u.email_usuario,
-                    RutaImagen = u.ruta_imagen
-                })
-                .ToListAsync();
-        }
+                    var authorization = context.Request.Headers["Authorization"].ToString();
 
-        // GET: api/UsuariosApi/5
-        [HttpGet("{id}")]
-        public async Task<ActionResult> GetUsuario(int id)
-        {
-            var usuario = await _context.Usuarios
-                .Where(u => u.sk_usuario_id == id)
-                .Select(u => new UsuarioProfileDto
+                    if (authorization.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
+                    {
+                        authorization = authorization.Substring(7).Trim();
+                    }
+
+                    if (authorization == "799")
+                    {
+                        // Permitir acceso con token de prueba '799'
+                        context.Items["UsuarioId"] = 30002; // ID de usuario por defecto (según contexto)
+                    }
+                    else
+                    {
+                        var token = await db.Token
+                            .FirstOrDefaultAsync(t => t.Cadena == authorization && t.Activo);
+
+                        if (token == null || token.FechaExpiracion < DateTime.Now)
+                        {
+                            context.Response.StatusCode = 401;
+                            await context.Response.WriteAsync("No autorizado");
+                            return;
+                        }
+
+                        context.Items["UsuarioId"] = token.sk_usuario_id;
+                        token.FechaExpiracion = DateTime.Now.AddMonths(1);
+                        await db.SaveChangesAsync();
+                    }
+                } 
+
+                var originalBodyStream = context.Response.Body;
+
+                using var responseBody = new MemoryStream();
+                context.Response.Body = responseBody;
+
+                await _next(context);
+
+                if (context.Response.StatusCode == 204 || context.Response.StatusCode == 304)
                 {
-                    Id = u.sk_usuario_id,
-                    Nombre = u.nombre_usuario,
-                    Correo = u.email_usuario,
-                    RutaImagen = u.ruta_imagen
-                })
-                .FirstOrDefaultAsync();
-
-            if (usuario == null)
-            {
-                return NotFound();
-            }
-
-            return Ok(usuario);
-        }
-
-        // PUT: api/UsuariosApi/5
-        [HttpPut("{id}")]
-        public async Task<IActionResult> PutUsuario(int id, [FromBody] RegisterDto dto)
-        {
-            // Nota: Reutilizamos RegisterDto ya que contiene Nombre, Correo y Contrasenia
-            var usuarioExistente = await _context.Usuarios.FindAsync(id);
-            if (usuarioExistente == null)
-            {
-                return NotFound("Usuario no encontrado.");
-            }
-
-            usuarioExistente.nombre_usuario = dto.Nombre;
-            usuarioExistente.email_usuario = dto.Correo;
-            if (dto.RutaImagen != null)
-            {
-                usuarioExistente.ruta_imagen = dto.RutaImagen;
-            }
-
-            if (!string.IsNullOrWhiteSpace(dto.Contrasenia))
-            {
-                var hasher = new PasswordHasher<Usuario>();
-                usuarioExistente.contrasenia = hasher.HashPassword(usuarioExistente, dto.Contrasenia);
-            }
-
-            try
-            {
-                await _context.SaveChangesAsync();
-            }
-            catch (DbUpdateConcurrencyException)
-            {
-                if (!UsuarioExists(id))
-                {
-                    return NotFound();
+                    context.Response.Body = originalBodyStream;
+                    return;
                 }
-                else
+
+                responseBody.Seek(0, SeekOrigin.Begin);
+
+                var responseText = await new StreamReader(responseBody).ReadToEndAsync();
+
+                responseBody.Seek(0, SeekOrigin.Begin);
+
+                object? data = null;
+
+                try
                 {
-                    throw;
+                    data = JsonSerializer.Deserialize<object>(responseText);
                 }
-            }
-
-            return Ok(new
-            {
-                mensaje = "Perfil actualizado correctamente"
-            });
-        }
-
-        // POST: api/UsuariosApi
-        [HttpPost]
-        public async Task<ActionResult> PostUsuario([FromBody] RegisterDto dto)
-        {
-            var existeCorreo = await _context.Usuarios
-                .AnyAsync(u => u.email_usuario == dto.Correo);
-
-            if (existeCorreo)
-            {
-                return BadRequest("El correo ya está registrado");
-            }
-
-            var nuevoUsuario = new Usuario
-            {
-                nombre_usuario = dto.Nombre,
-                email_usuario = dto.Correo,
-                ruta_imagen = dto.RutaImagen
-            };
-
-            var hasher = new PasswordHasher<Usuario>();
-            nuevoUsuario.contrasenia = hasher.HashPassword(nuevoUsuario, dto.Contrasenia);
-
-            _context.Usuarios.Add(nuevoUsuario);
-            await _context.SaveChangesAsync();
-
-            return CreatedAtAction(
-                "GetUsuario",
-                new { id = nuevoUsuario.sk_usuario_id },
-                new UsuarioProfileDto
+                catch
                 {
-                    Id = nuevoUsuario.sk_usuario_id,
-                    Nombre = nuevoUsuario.nombre_usuario,
-                    Correo = nuevoUsuario.email_usuario,
-                    RutaImagen = nuevoUsuario.ruta_imagen
+                    data = responseText;
                 }
-            );
-        }
 
-        [HttpPost("perfil/imagen")]
-        [HttpPost("/api/UsuariosDimension/perfil/imagen")]
-        [RequestSizeLimit(MaxProfileImageBytes)]
-        public async Task<ActionResult> UploadProfileImage(
-            [FromForm(Name = "imagen")] IFormFile? imagen,
-            [FromForm] int? usuarioId)
-        {
-            if (imagen == null || imagen.Length == 0)
-            {
-                return BadRequest("Selecciona una imagen válida.");
+                var responseFormat = new
+                {
+                    success = context.Response.StatusCode >= 200 &&
+                              context.Response.StatusCode < 300,
+
+                    status = context.Response.StatusCode,
+
+                    data = data
+                };
+
+                var jsonResponse = JsonSerializer.Serialize(responseFormat);
+
+                context.Response.ContentType = "application/json";
+
+                var bytes = Encoding.UTF8.GetBytes(jsonResponse);
+
+                context.Response.ContentLength = bytes.Length;
+
+                await originalBodyStream.WriteAsync(bytes, 0, bytes.Length);
             }
-
-            if (imagen.Length > MaxProfileImageBytes)
+            else
             {
-                return BadRequest("La imagen no debe exceder 5 MB.");
+                await _next(context);
             }
-
-            var extension = Path.GetExtension(imagen.FileName);
-            if (string.IsNullOrWhiteSpace(extension) || !AllowedProfileImageExtensions.Contains(extension))
-            {
-                return BadRequest("Solo se permiten imágenes JPG o PNG.");
-            }
-
-            if (imagen.ContentType == null || !imagen.ContentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase))
-            {
-                return BadRequest("El archivo enviado no parece ser una imagen.");
-            }
-
-            var userIdFromToken = HttpContext.Items["UsuarioId"] as int?;
-            var targetUserId = userIdFromToken ?? usuarioId;
-            if (targetUserId == null || targetUserId <= 0)
-            {
-                return BadRequest("No se pudo identificar al usuario.");
-            }
-
-            var usuario = await _context.Usuarios.FindAsync(targetUserId.Value);
-            if (usuario == null)
-            {
-                return NotFound("Usuario no encontrado.");
-            }
-
-            var webRootPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot");
-            var uploadDirectory = Path.Combine(webRootPath, "uploads", "perfiles", targetUserId.Value.ToString());
-            Directory.CreateDirectory(uploadDirectory);
-
-            var safeExtension = extension.Equals(".png", StringComparison.OrdinalIgnoreCase) ? ".png" : ".jpg";
-            var fileName = $"perfil-{Guid.NewGuid():N}{safeExtension}";
-            var filePath = Path.Combine(uploadDirectory, fileName);
-
-            await using (var stream = System.IO.File.Create(filePath))
-            {
-                await imagen.CopyToAsync(stream);
-            }
-
-            var relativePath = $"/uploads/perfiles/{targetUserId.Value}/{fileName}";
-            usuario.ruta_imagen = relativePath;
-            await _context.SaveChangesAsync();
-
-            var absoluteUrl = $"{Request.Scheme}://{Request.Host}{relativePath}";
-            return Ok(new
-            {
-                ruta_imagen = relativePath,
-                url_imagen = absoluteUrl
-            });
-        }
-
-        // GET: api/usuarios/5/voz-config
-        [HttpGet("{id}/voz-config")]
-        public async Task<ActionResult<UsuarioVozConfigDto>> GetVozConfig(int id)
-        {
-            var usuario = await _context.Usuarios.FindAsync(id);
-            if (usuario == null) return NotFound();
-
-            return Ok(new UsuarioVozConfigDto
-            {
-                ControlVozActivado = usuario.control_voz_activado,
-                ConfirmacionHabladaActivada = usuario.confirmacion_hablada_activada,
-                VozTipoSeleccionado = usuario.voz_tipo_seleccionado,
-                VozVelocidad = usuario.voz_velocidad,
-                VozIdioma = usuario.voz_idioma
-            });
-        }
-
-        // PUT: api/usuarios/5/voz-config
-        [HttpPut("{id}/voz-config")]
-        public async Task<IActionResult> PutVozConfig(int id, [FromBody] UsuarioVozConfigDto dto)
-        {
-            var usuario = await _context.Usuarios.FindAsync(id);
-            if (usuario == null) return NotFound();
-
-            usuario.control_voz_activado = dto.ControlVozActivado;
-            usuario.confirmacion_hablada_activada = dto.ConfirmacionHabladaActivada;
-            usuario.voz_tipo_seleccionado = dto.VozTipoSeleccionado;
-            usuario.voz_velocidad = dto.VozVelocidad;
-            usuario.voz_idioma = dto.VozIdioma;
-
-            await _context.SaveChangesAsync();
-            return Ok(new { mensaje = "Configuración de voz actualizada" });
-        }
-
-        // DELETE: api/UsuariosApi/5
-        [HttpDelete("{id}")]
-        public async Task<IActionResult> DeleteUsuario(int id)
-        {
-            var usuario = await _context.Usuarios.FindAsync(id);
-            if (usuario == null)
-            {
-                return NotFound();
-            }
-
-            _context.Usuarios.Remove(usuario);
-            await _context.SaveChangesAsync();
-
-            return NoContent();
-        }
-
-        private bool UsuarioExists(int id)
-        {
-            return _context.Usuarios.Any(e => e.sk_usuario_id == id);
         }
     }
 }
@@ -109097,6 +109337,7 @@ public class GestosController : ControllerBase
                 TipoDisparadorNombre = g.tipo_disparador_nombre,
                 FraseVozActivadora = g.frase_voz_activadora,
                 SkAparatoId = g.sk_aparato_id,
+                ContactoOutlet = g.contacto_outlet,
                 Pasos = g.PasosSecuencia.Select(p => new GestoPasoDto
                 {
                     SkGestoPasoId = p.sk_gesto_paso_id,
@@ -109128,6 +109369,7 @@ public class GestosController : ControllerBase
                 TipoDisparadorNombre = g.tipo_disparador_nombre,
                 FraseVozActivadora = g.frase_voz_activadora,
                 SkAparatoId = g.sk_aparato_id,
+                ContactoOutlet = g.contacto_outlet,
                 Pasos = g.PasosSecuencia.Select(p => new GestoPasoDto
                 {
                     SkGestoPasoId = p.sk_gesto_paso_id,
@@ -109385,6 +109627,7 @@ public class GestosController : ControllerBase
         TipoDisparadorNombre = gesto.tipo_disparador_nombre,
         FraseVozActivadora = gesto.frase_voz_activadora,
         SkAparatoId = gesto.sk_aparato_id,
+        ContactoOutlet = gesto.contacto_outlet,
         Pasos = gesto.PasosSecuencia?.Select(p => new GestoPasoDto
         {
             SkGestoPasoId = p.sk_gesto_paso_id,
@@ -109406,199 +109649,7 @@ public class GestosController : ControllerBase
         gesto.tipo_disparador_nombre = dto.TipoDisparadorNombre;
         gesto.frase_voz_activadora = dto.FraseVozActivadora;
         gesto.sk_aparato_id = dto.SkAparatoId;
-    }
-}
-</file>
-
-<file path="backend/DTOs/AparatoDto.cs">
-using System.Text.Json.Serialization;
-
-namespace backend.DTOs
-{
-    public class AparatoDto
-    {
-        [JsonPropertyName("sk_aparato_id")]
-        public int SkAparatoId { get; set; }
-
-        [JsonPropertyName("nombre_aparato")]
-        public string? NombreAparato { get; set; }
-
-        [JsonPropertyName("tipo_aparato")]
-        public string? TipoAparato { get; set; }
-
-        [JsonPropertyName("accion_nombre")]
-        public string? AccionNombre { get; set; }
-
-        [JsonPropertyName("comando_bluetooth")]
-        public string? ComandoBluetooth { get; set; }
-
-        [JsonPropertyName("icono")]
-        public string? Icono { get; set; }
-
-        [JsonPropertyName("metodo_vinculacion")]
-        public string? MetodoVinculacion { get; set; }
-
-        [JsonPropertyName("mac_bluetooth")]
-        public string? MacBluetooth { get; set; }
-
-        [JsonPropertyName("nombre_bluetooth")]
-        public string? NombreBluetooth { get; set; }
-
-        [JsonPropertyName("fecha_sincronizacion")]
-        public DateTime? FechaSincronizacion { get; set; }
-
-        [JsonPropertyName("sk_habitacion_id")]
-        public int? SkHabitacionId { get; set; }
-
-        [JsonPropertyName("nombre_habitacion")]
-        public string? NombreHabitacion { get; set; }
-
-        [JsonPropertyName("estado_encendido")]
-        public bool? EstadoEncendido { get; set; }
-
-        [JsonPropertyName("estado_encendido_2")]
-        public bool? EstadoEncendido2 { get; set; }
-
-        [JsonPropertyName("estado_encendido_3")]
-        public bool? EstadoEncendido3 { get; set; }
-
-        [JsonPropertyName("estado_encendido_4")]
-        public bool? EstadoEncendido4 { get; set; }
-
-        [JsonPropertyName("conectado_red")]
-        public bool? ConectadoRed { get; set; }
-
-        [JsonPropertyName("ip_address")]
-        public string? IpAddress { get; set; }
-
-        [JsonPropertyName("fecha_estado_actualizado")]
-        public DateTime? FechaEstadoActualizado { get; set; }
-
-        [JsonPropertyName("corriente_a")]
-        public decimal? CorrienteA { get; set; }
-
-        [JsonPropertyName("potencia_w")]
-        public decimal? PotenciaW { get; set; }
-
-        [JsonPropertyName("energia_acumulada_wh")]
-        public decimal? EnergiaAcumuladaWh { get; set; }
-
-        [JsonPropertyName("fecha_medicion_consumo")]
-        public DateTime? FechaMedicionConsumo { get; set; }
-    }
-}
-</file>
-
-<file path="backend/Middleware/RequestMiddleware.cs">
-using backend.Models;
-using Microsoft.EntityFrameworkCore;
-using System.Text;
-using System.Text.Json;
-
-namespace backend.Middleware
-{
-    public class RequestMiddleware
-    {
-        private readonly RequestDelegate _next;
-
-        public RequestMiddleware(RequestDelegate next)
-        {
-            _next = next;
-        }
-
-        public async Task InvokeAsync(HttpContext context, PruebaaspContext db)
-        {
-            
-            if (context.Request.Path.StartsWithSegments("/api"))
-            {
-                if (!context.Request.Path.Equals("/api/Auth/login") &&
-                    !context.Request.Path.Equals("/api/Auth/register"))
-                {
-                    var authorization = context.Request.Headers["Authorization"].ToString();
-
-                    if (authorization.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
-                    {
-                        authorization = authorization.Substring(7).Trim();
-                    }
-
-                    if (authorization == "799")
-                    {
-                        // Permitir acceso con token de prueba '799'
-                        context.Items["UsuarioId"] = 30002; // ID de usuario por defecto (según contexto)
-                    }
-                    else
-                    {
-                        var token = await db.Token
-                            .FirstOrDefaultAsync(t => t.Cadena == authorization && t.Activo);
-
-                        if (token == null || token.FechaExpiracion < DateTime.Now)
-                        {
-                            context.Response.StatusCode = 401;
-                            await context.Response.WriteAsync("No autorizado");
-                            return;
-                        }
-
-                        context.Items["UsuarioId"] = token.sk_usuario_id;
-                        token.FechaExpiracion = DateTime.Now.AddMonths(1);
-                        await db.SaveChangesAsync();
-                    }
-                } 
-
-                var originalBodyStream = context.Response.Body;
-
-                using var responseBody = new MemoryStream();
-                context.Response.Body = responseBody;
-
-                await _next(context);
-
-                if (context.Response.StatusCode == 204 || context.Response.StatusCode == 304)
-                {
-                    context.Response.Body = originalBodyStream;
-                    return;
-                }
-
-                responseBody.Seek(0, SeekOrigin.Begin);
-
-                var responseText = await new StreamReader(responseBody).ReadToEndAsync();
-
-                responseBody.Seek(0, SeekOrigin.Begin);
-
-                object? data = null;
-
-                try
-                {
-                    data = JsonSerializer.Deserialize<object>(responseText);
-                }
-                catch
-                {
-                    data = responseText;
-                }
-
-                var responseFormat = new
-                {
-                    success = context.Response.StatusCode >= 200 &&
-                              context.Response.StatusCode < 300,
-
-                    status = context.Response.StatusCode,
-
-                    data = data
-                };
-
-                var jsonResponse = JsonSerializer.Serialize(responseFormat);
-
-                context.Response.ContentType = "application/json";
-
-                var bytes = Encoding.UTF8.GetBytes(jsonResponse);
-
-                context.Response.ContentLength = bytes.Length;
-
-                await originalBodyStream.WriteAsync(bytes, 0, bytes.Length);
-            }
-            else
-            {
-                await _next(context);
-            }
-        }
+        gesto.contacto_outlet = dto.ContactoOutlet;
     }
 }
 </file>
@@ -110893,6 +110944,7 @@ public partial class PruebaaspContext : DbContext
             entity.Property(e => e.nivel_confianza_minimo).HasColumnName("nivel_confianza_minimo");
             entity.Property(e => e.tipo_disparador_nombre).HasMaxLength(100).HasColumnName("tipo_disparador_nombre");
             entity.Property(e => e.sk_aparato_id).HasColumnName("sk_aparato_id");
+            entity.Property(e => e.contacto_outlet).HasColumnName("contacto_outlet");
             entity.Property(e => e.sk_usuario_id).HasColumnName("sk_usuario_id");
         });
 
@@ -112989,6 +113041,9 @@ try
         // if (!db.AparatoTipos.Any(t => t.nombre_tipo == "Ventilador"))
         //     db.AparatoTipos.Add(new AparatoTipo { nombre_tipo = "Ventilador", icono = "wind", es_asistente = false, soporta_wifi = true, soporta_bluetooth = true, requiere_vinculacion_bluetooth = false, orden = 6, palabras_clave_busqueda = "FAN,VENTILADOR" });
 
+        if (!db.AparatoTipos.Any(t => t.nombre_tipo == "Ventilador Inteligente"))
+            db.AparatoTipos.Add(new AparatoTipo { nombre_tipo = "Ventilador Inteligente", icono = "wind", es_asistente = false, soporta_wifi = true, soporta_bluetooth = true, requiere_vinculacion_bluetooth = false, orden = 6, palabras_clave_busqueda = "FAN,VENTILADOR,VENTILADORES,PWM,VELOCIDAD,DC MOTOR" });
+
         if (!db.AparatoTipos.Any(t => t.nombre_tipo == "Cámara"))
             db.AparatoTipos.Add(new AparatoTipo { nombre_tipo = "Cámara", icono = "videocam", es_asistente = false, soporta_wifi = true, soporta_bluetooth = true, requiere_vinculacion_bluetooth = false, orden = 7, palabras_clave_busqueda = "CAM,CAMERA,CAMARA,WEBCAM,VIDEO" });
 
@@ -113013,6 +113068,7 @@ try
             var usaWifiBluetooth =
                 tipo.nombre_tipo == "Sockets Inteligentes" ||
                 tipo.nombre_tipo == "MultiSocket" ||
+                tipo.nombre_tipo == "Ventilador Inteligente" ||
                 tipo.nombre_tipo == "Cámara";
 
             // Forzar configuración WiFi-only por defecto a los antiguos
@@ -113024,6 +113080,7 @@ try
                 tipo.soporta_wifi = true;
                 
                 if (tipo.nombre_tipo == "MultiSocket" ||
+                    tipo.nombre_tipo == "Ventilador Inteligente" ||
                     tipo.nombre_tipo == "Cámara") {
                     tipo.requiere_vinculacion_bluetooth = false;
                 }
@@ -113036,7 +113093,7 @@ try
                     // case "Enchufe": tipo.icono = "plug"; tipo.orden = 3; break;
                     case "Sockets Inteligentes": tipo.icono = "plug"; tipo.orden = 4; break;
                     case "MultiSocket": tipo.icono = "plug"; tipo.orden = 5; break;
-                    // case "Ventilador": tipo.icono = "wind"; tipo.orden = 6; break;
+                    case "Ventilador Inteligente": tipo.icono = "wind"; tipo.orden = 6; break;
                     case "Cámara": tipo.icono = "videocam"; tipo.orden = 7; break;
                     // case "Televisión": tipo.icono = "tv_minimal"; tipo.orden = 6; break;
                     // case "Bocinas": tipo.icono = "speaker"; tipo.orden = 7; break;
