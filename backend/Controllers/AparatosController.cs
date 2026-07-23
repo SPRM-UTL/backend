@@ -368,6 +368,23 @@ public class AparatosController : ControllerBase
                 _context.AparatoControles.RemoveRange(controlesRelacionados);
             }
 
+            var bluetoothRegistro = await _context.AparatoBluetooth
+                .FirstOrDefaultAsync(b => b.sk_aparato_id == aparatoId);
+
+            if (bluetoothRegistro != null)
+            {
+                _context.AparatoBluetooth.Remove(bluetoothRegistro);
+            }
+
+            var historialActividades = await _context.HistorialActividades
+                .Where(h => h.sk_aparato_id == aparatoId)
+                .ToListAsync();
+
+            if (historialActividades.Count > 0)
+            {
+                _context.HistorialActividades.RemoveRange(historialActividades);
+            }
+
             _context.Aparatos.Remove(aparato);
             await _context.SaveChangesAsync();
 
