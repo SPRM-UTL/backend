@@ -9,9 +9,9 @@ using backend.DTOs;
 public class GestosController : ControllerBase
 {
     private readonly PruebaaspContext _context;
-    
+
     // Lista de gestos permitidos para que acepte los que me enviaron en la imagen
-    private static readonly string[] GestosValidos = new[] { 
+    private static readonly string[] GestosValidos = new[] {
         "Manos Arriba",
         "Una Mano Arriba",
         "Agitar la Mano",
@@ -112,8 +112,131 @@ public class GestosController : ControllerBase
         return gesto;
     }
 
+    // GET: api/gestos/5/detalle
+    [HttpGet("{sk_gesto_id}/detalle")]
+    public async Task<ActionResult<GestoDetalleDto>> GetGestoDetalle(int sk_gesto_id)
+    {
+        var usuarioId = (int?)HttpContext.Items["UsuarioId"];
+
+        // 1. Buscamos primero si existe la fila en la tabla gesto_detalle
+        var detalle = await _context.GestoDetalles
+            .Include(gd => gd.Gesto)
+                .ThenInclude(g => g.PasosSecuencia)
+            .Include(gd => gd.MediosReferencia)
+            .FirstOrDefaultAsync(gd => gd.GestoId == sk_gesto_id && gd.Gesto.sk_usuario_id == usuarioId);
+
+        // 2. SI EXISTE EN 'gesto_detalle': Devolvemos la info completa
+        if (detalle != null)
+        {
+            var dtoCompleto = new GestoDetalleDto
+            {
+                SkGestoDetalleId = detalle.Id,
+                SkGestoId = detalle.GestoId,
+                NombreGesto = detalle.Gesto?.nombre_gesto ?? string.Empty,
+                DuracionSegundos = detalle.DuracionSegundos,
+                IluminacionRecomendada = detalle.IluminacionRecomendada,
+                DistanciaRecomendada = detalle.DistanciaRecomendada,
+                MediosReferencia = detalle.MediosReferencia.Select(m => new GestoMediaDto
+                {
+                    SkMediaId = m.Id,
+                    UrlArchivo = m.UrlArchivo,
+                    TipoMedia = m.TipoMedia,
+                    Extension = m.Extension
+                }).ToList()
+            };
+
+            return Ok(dtoCompleto);
+        }
+
+        // 3. SI NO EXISTE EN 'gesto_detalle': Consultamos la tabla principal de gestos
+        var gestoBase = await _context.Gestos
+            .Include(g => g.PasosSecuencia)
+            .FirstOrDefaultAsync(g => g.sk_gesto_id == sk_gesto_id && g.sk_usuario_id == usuarioId);
+
+        // Si el gesto ni siquiera existe en la base de datos, retornamos NotFound
+        if (gestoBase == null)
+        {
+            return NotFound("No se encontró el gesto especificado.");
+        }
+
+        // 4. FALLBACK SUAVE (200 OK): Evita errores 404 y notificaciones rojas en el frontend
+        var dtoFallback = new GestoDetalleDto
+        {
+            SkGestoDetalleId = 0,
+            SkGestoId = gestoBase.sk_gesto_id,
+            NombreGesto = gestoBase.nombre_gesto ?? "Sin nombre",
+            DuracionSegundos = 1.00m,
+            IluminacionRecomendada = "Buena iluminación / Luz clara",
+            DistanciaRecomendada = "0.5 - 1.5 metros",
+            MediosReferencia = new List<GestoMediaDto>()
+        };
+
+        return Ok(dtoFallback);
+    }
+
+    // POST: api/gestos/{sk_gesto_id}/detalle
+    // Es utilizada para la alimentación de los detalles de los gestos
+    [HttpPost("{sk_gesto_id}/detalle")]
+    public async Task<ActionResult<GestoDetalleDto>> PostGestoDetalle(int sk_gesto_id, GestoDetalleDto dto)
+    {
+        var usuarioId = (int?)HttpContext.Items["UsuarioId"];
+
+        var gesto = await _context.Gestos
+            .FirstOrDefaultAsync(g => g.sk_gesto_id == sk_gesto_id && g.sk_usuario_id == usuarioId);
+
+        if (gesto == null)
+        {
+            return NotFound("El gesto no existe o no tienes permiso para acceder a él.");
+        }
+
+        var detalle = await _context.GestoDetalles
+            .Include(d => d.MediosReferencia)
+            .FirstOrDefaultAsync(d => d.GestoId == sk_gesto_id);
+
+        if (detalle == null)
+        {
+            detalle = new GestoDetalle { GestoId = sk_gesto_id };
+            _context.GestoDetalles.Add(detalle);
+        }
+
+        detalle.DuracionSegundos = dto.DuracionSegundos;
+        detalle.IluminacionRecomendada = dto.IluminacionRecomendada;
+        detalle.DistanciaRecomendada = dto.DistanciaRecomendada;
+
+        if (detalle.MediosReferencia.Any())
+        {
+            _context.GestoMedias.RemoveRange(detalle.MediosReferencia);
+        }
+
+        detalle.MediosReferencia = dto.MediosReferencia.Select(m => new GestoMedia
+        {
+            UrlArchivo = m.UrlArchivo,
+            TipoMedia = m.TipoMedia,
+            Extension = m.Extension
+        }).ToList();
+
+        await _context.SaveChangesAsync();
+
+        // Devolver la info completa para confirmar
+        return Ok(new GestoDetalleDto
+        {
+            SkGestoDetalleId = detalle.Id,
+            SkGestoId = detalle.GestoId,
+            NombreGesto = gesto.nombre_gesto ?? string.Empty,
+            DuracionSegundos = detalle.DuracionSegundos,
+            IluminacionRecomendada = detalle.IluminacionRecomendada,
+            DistanciaRecomendada = detalle.DistanciaRecomendada,
+            MediosReferencia = detalle.MediosReferencia.Select(m => new GestoMediaDto
+            {
+                SkMediaId = m.Id,
+                UrlArchivo = m.UrlArchivo,
+                TipoMedia = m.TipoMedia,
+                Extension = m.Extension
+            }).ToList()
+        });
+    }
+
     // PUT: api/Dim_Gestos/5
-    // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
     [HttpPut("{sk_gesto_id}")]
     public async Task<IActionResult> PutGesto(int? sk_gesto_id, GestoDto dto)
     {
@@ -122,8 +245,8 @@ public class GestosController : ControllerBase
             return BadRequest();
         }
 
-        bool isCombo = dto.TipoDisparadorNombre != null && 
-                       (dto.TipoDisparadorNombre.ToUpper().Contains("COMBO") || 
+        bool isCombo = dto.TipoDisparadorNombre != null &&
+                       (dto.TipoDisparadorNombre.ToUpper().Contains("COMBO") ||
                         dto.TipoDisparadorNombre.ToUpper().Contains("SECUENCIA") ||
                         dto.TipoDisparadorNombre.ToUpper().Contains("VOZ"));
 
@@ -148,7 +271,7 @@ public class GestosController : ControllerBase
         {
             _context.GestoPasos.RemoveRange(gesto.PasosSecuencia);
         }
-        
+
         if (dto.Pasos != null && dto.Pasos.Any())
         {
             gesto.PasosSecuencia = dto.Pasos.Select(p => new GestoPaso
@@ -181,12 +304,11 @@ public class GestosController : ControllerBase
     }
 
     // POST: api/Dim_Gestos
-    // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
     [HttpPost]
     public async Task<ActionResult<GestoDto>> PostGesto(GestoDto dto)
     {
-        bool isCombo = dto.TipoDisparadorNombre != null && 
-                       (dto.TipoDisparadorNombre.ToUpper().Contains("COMBO") || 
+        bool isCombo = dto.TipoDisparadorNombre != null &&
+                       (dto.TipoDisparadorNombre.ToUpper().Contains("COMBO") ||
                         dto.TipoDisparadorNombre.ToUpper().Contains("SECUENCIA") ||
                         dto.TipoDisparadorNombre.ToUpper().Contains("VOZ"));
 
@@ -234,104 +356,6 @@ public class GestosController : ControllerBase
 
         return Ok();
     }
-    // Dentro de GestosController.cs
-    [HttpGet("{sk_gesto_id}/detalle")]
-    public async Task<ActionResult<GestoDetalleDto>> GetGestoDetalle(int sk_gesto_id)
-    {
-        var usuarioId = (int?)HttpContext.Items["UsuarioId"];
-
-        var detalle = await _context.GestoDetalles
-            .Include(gd => gd.Gesto)
-            .Include(gd => gd.MediosReferencia)
-            .FirstOrDefaultAsync(gd => gd.GestoId == sk_gesto_id && gd.Gesto.sk_usuario_id == usuarioId);
-
-        if (detalle == null)
-        {
-            return NotFound("No se encontró el detalle para el gesto especificado.");
-        }
-
-        // El mapeo limpio usando tu modelo final:
-        var dto = new GestoDetalleDto
-        {
-            SkGestoDetalleId = detalle.Id, // <--- Conecta con tu modelo
-            SkGestoId = detalle.GestoId,   // <--- Conecta con tu modelo
-            NombreGesto = detalle.Gesto?.nombre_gesto ?? string.Empty,
-            DuracionSegundos = detalle.DuracionSegundos,
-            IluminacionRecomendada = detalle.IluminacionRecomendada,
-            DistanciaRecomendada = detalle.DistanciaRecomendada,
-            MediosReferencia = detalle.MediosReferencia.Select(m => new GestoMediaDto
-            {
-                SkMediaId = m.Id,
-                UrlArchivo = m.UrlArchivo,
-                TipoMedia = m.TipoMedia,
-                Extension = m.Extension
-            }).ToList()
-        };
-
-        return Ok(dto);
-    }
-
-    // POST: api/gestos/{sk_gesto_id}/detalle
-    // Es utilizada para la alimentación de los detalles de los gestos
-    [HttpPost("{sk_gesto_id}/detalle")]
-    public async Task<ActionResult<GestoDetalleDto>> PostGestoDetalle(int sk_gesto_id, GestoDetalleDto dto)
-    {
-        var usuarioId = (int?)HttpContext.Items["UsuarioId"];
-
-        var gesto = await _context.Gestos
-            .FirstOrDefaultAsync(g => g.sk_gesto_id == sk_gesto_id && g.sk_usuario_id == usuarioId);
-
-        if (gesto == null)
-        {
-            return NotFound("El gesto no existe o no tienes permiso para acceder a él.");
-        }
-
-        var detalle = await _context.GestoDetalles
-            .Include(d => d.MediosReferencia)
-            .FirstOrDefaultAsync(d => d.GestoId == sk_gesto_id);
-
-        if (detalle == null)
-        {
-            detalle = new GestoDetalle { GestoId = sk_gesto_id };
-            _context.GestoDetalles.Add(detalle);
-        }
-
-        detalle.DuracionSegundos = dto.DuracionSegundos;
-        detalle.IluminacionRecomendada = dto.IluminacionRecomendada;
-        detalle.DistanciaRecomendada = dto.DistanciaRecomendada;
-
-        if (detalle.MediosReferencia.Any())
-        {
-            _context.GestoMedias.RemoveRange(detalle.MediosReferencia);
-        }
-
-        detalle.MediosReferencia = dto.MediosReferencia.Select(m => new GestoMedia
-        {
-            UrlArchivo = m.UrlArchivo,
-            TipoMedia = m.TipoMedia,
-            Extension = m.Extension
-        }).ToList();
-
-        await _context.SaveChangesAsync();
-
-        // 5. Devolver la info completa para confirmar
-        return Ok(new GestoDetalleDto
-        {
-            SkGestoDetalleId = detalle.Id,
-            SkGestoId = detalle.GestoId,
-            NombreGesto = gesto.nombre_gesto,
-            DuracionSegundos = detalle.DuracionSegundos,
-            IluminacionRecomendada = detalle.IluminacionRecomendada,
-            DistanciaRecomendada = detalle.DistanciaRecomendada,
-            MediosReferencia = detalle.MediosReferencia.Select(m => new GestoMediaDto
-            {
-                SkMediaId = m.Id,
-                UrlArchivo = m.UrlArchivo,
-                TipoMedia = m.TipoMedia,
-                Extension = m.Extension
-            }).ToList()
-        });
-    }
 
     private bool GestoExists(int? sk_gesto_id)
     {
@@ -365,7 +389,7 @@ public class GestosController : ControllerBase
     {
         gesto.bk_gesto_id = dto.BkGestoId;
         gesto.nombre_gesto = dto.NombreGesto;
-        gesto.icono= dto.Icono;
+        gesto.icono = dto.Icono;
         gesto.identificador_ia = dto.IdentificadorIa;
         gesto.nivel_confianza_minimo = dto.NivelConfianzaMinimo;
         gesto.tipo_disparador_nombre = dto.TipoDisparadorNombre;
