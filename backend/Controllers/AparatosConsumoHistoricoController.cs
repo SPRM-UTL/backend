@@ -21,7 +21,7 @@ namespace backend.Controllers
         }
 
         // Historial de todos los aparatos de un usuario
-        [HttpGet("{usuarioId}/consumo_historico")]
+        [HttpGet("usuario/{usuarioId}/consumo_historico")]
         public async Task<ActionResult<IEnumerable<AparatoConsumoDto>>> GetConsumoHistoricoPorUsuario(
             [FromRoute] int usuarioId,
             [FromQuery] int limit = 100,
@@ -165,7 +165,7 @@ namespace backend.Controllers
         }
 
         // Mantienes tu endpoint individual original abajo si lo necesitas...
-        [HttpGet("{sk_aparato_id}/consumo_historico")]
+        [HttpGet("aparato/{sk_aparato_id}/consumo_historico")]
         public async Task<ActionResult<IEnumerable<AparatoConsumoDto>>> GetConsumoHistorico(
             int sk_aparato_id,
             [FromQuery] int limit = 100,
@@ -231,15 +231,16 @@ namespace backend.Controllers
             if (hasta.HasValue)
                 query = query.Where(q => q.consumo.fecha_medicion <= hasta.Value);
 
-            // Agrupamos por el nombre del aparato para sumar sus Wh consumidos en ese lapso de tiempo
-            var resultado = await query
+            var lecturas = await query.ToListAsync();
+
+            var resultado = lecturas
                 .GroupBy(q => q.nombre_aparato)
                 .Select(g => new
                 {
                     Aparato = g.Key,
                     TotalEnergiaWh = g.Max(x => x.consumo.energia_wh) - g.Min(x => x.consumo.energia_wh)
                 })
-                .ToListAsync();
+                .ToList();
 
             return Ok(resultado);
         }
