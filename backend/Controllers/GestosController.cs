@@ -121,9 +121,9 @@ public class GestosController : ControllerBase
         // 1. Buscamos primero si existe la fila en la tabla gesto_detalle
         var detalle = await _context.GestoDetalles
             .Include(gd => gd.Gesto)
-                .ThenInclude(g => g.PasosSecuencia)
+                .ThenInclude(g => g!.PasosSecuencia)
             .Include(gd => gd.MediosReferencia)
-            .FirstOrDefaultAsync(gd => gd.GestoId == sk_gesto_id && gd.Gesto.sk_usuario_id == usuarioId);
+            .FirstOrDefaultAsync(gd => gd.GestoId == sk_gesto_id && gd.Gesto!.sk_usuario_id == usuarioId);
 
         // 2. SI EXISTE EN 'gesto_detalle': Devolvemos la info completa
         if (detalle != null)

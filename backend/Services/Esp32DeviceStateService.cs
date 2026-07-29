@@ -206,6 +206,7 @@ namespace backend.Services
             return false;
         }
 
+
         public async Task ProcessInboundMessageAsync(
             int configuracionRedId,
             string message,
@@ -215,6 +216,11 @@ namespace backend.Services
             {
                 await ProcessTelemetryAsync(configuracionRedId, telemetry, cancellationToken);
                 return;
+            }
+
+            if (TryParseCameraIp(message, out var cameraIp))
+            {
+                await UpdateCameraIpAsync(configuracionRedId, cameraIp, cancellationToken);
             }
 
             var payload = TryDeserializeJson(message, out var jsonRoot)
@@ -238,6 +244,47 @@ namespace backend.Services
             {
                 var origen = message.TrimStart().StartsWith('{') ? "esp32_json" : "esp32_ack";
                 await UpdatePowerStateAsync(configuracionRedId, powerState.Value, origen, cancellationToken);
+            }
+        }
+
+        private bool TryParseCameraIp(string message, out string ip)
+        {
+            ip = string.Empty;
+            if (string.IsNullOrWhiteSpace(message) || !message.TrimStart().StartsWith('{'))
+            {
+                return false;
+            }
+
+            try
+            {
+                using var doc = JsonDocument.Parse(message);
+                var root = doc.RootElement;
+                if (root.TryGetProperty("action", out var actionProp) &&
+                    actionProp.GetString() == "camera_ip" &&
+                    root.TryGetProperty("ip", out var ipProp))
+                {
+                    ip = ipProp.GetString() ?? string.Empty;
+                    return !string.IsNullOrEmpty(ip);
+                }
+            }
+            catch (JsonException)
+            {
+            }
+            return false;
+        }
+
+        private async Task UpdateCameraIpAsync(int configuracionRedId, string ip, CancellationToken cancellationToken)
+        {
+            await using var scope = _scopeFactory.CreateAsyncScope();
+            var db = scope.ServiceProvider.GetRequiredService<PruebaaspContext>();
+
+            var config = await db.AparatoConfiguracionesRed
+                .FirstOrDefaultAsync(c => c.sk_aparato_configuracion_red_id == configuracionRedId, cancellationToken);
+
+            if (config != null && config.ip_address != ip)
+            {
+                config.ip_address = ip;
+                await db.SaveChangesAsync(cancellationToken);
             }
         }
 

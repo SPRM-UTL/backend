@@ -252,6 +252,7 @@ namespace backend.Controllers
         {
             var config = context.AparatoConfiguracionesRed
                 .Include(c => c.Aparato)
+                .ThenInclude(a => a.Tipo)
                 .FirstOrDefault(c => c.sk_aparato_id == sk_aparato_id);
                 
             if (config == null || (string.IsNullOrWhiteSpace(config.device_key) && string.IsNullOrWhiteSpace(config.ip_address)))
@@ -259,7 +260,11 @@ namespace backend.Controllers
                 return NotFound("El aparato no tiene configuración de red válida.");
             }
 
-            string comando = estado ? "ON" : "OFF";
+            bool esCamara = config.Aparato?.Tipo?.nombre_tipo == "Cámara" || config.Aparato?.Tipo?.nombre_tipo == "Camara";
+            string comando = esCamara 
+                ? (estado ? "LED_ON" : "LED_OFF")
+                : (estado ? "ON" : "OFF");
+
             bool esWifiLocal = config.Aparato?.metodo_vinculacion == "WIFI" || config.Aparato?.metodo_vinculacion == "LAN";
 
             if (esWifiLocal)

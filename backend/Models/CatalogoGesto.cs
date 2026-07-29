@@ -10,11 +10,11 @@ namespace backend.Models
 
         [Required]
         [MaxLength(100)]
-        public string nombre { get; set; }
+        public string nombre { get; set; } = string.Empty;
 
         [Required]
         [MaxLength(50)]
-        public string icono { get; set; }
+        public string icono { get; set; } = string.Empty;
 
         public bool is_body_gesture { get; set; }
 

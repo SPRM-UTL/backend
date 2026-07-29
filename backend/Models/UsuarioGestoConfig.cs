@@ -11,9 +11,9 @@ namespace backend.Models
         public bool is_active { get; set; }
 
         [ForeignKey("sk_usuario_id")]
-        public virtual Usuario Usuario { get; set; }
+        public virtual Usuario Usuario { get; set; } = null!;
 
         [ForeignKey("sk_catalogo_gesto_id")]
-        public virtual CatalogoGesto CatalogoGesto { get; set; }
+        public virtual CatalogoGesto CatalogoGesto { get; set; } = null!;
     }
 }
