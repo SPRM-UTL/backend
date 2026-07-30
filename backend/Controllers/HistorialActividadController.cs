@@ -22,12 +22,16 @@ namespace backend.Controllers
         [HttpGet]
         public async Task<ActionResult<IEnumerable<ActividadHistorialDto>>> GetFact_Historico_Actividad()
         {
+            var usuarioId = (int?)HttpContext.Items["UsuarioId"];
+
             // PASO 1: Traemos los datos crudos desde la Base de Datos de forma asíncrona
             var datosCrudos = await _context.HistorialActividades
                 .Include(h => h.Tiempo)
                 .Include(h => h.Usuario)
                 .Include(h => h.Aparato)
+                    .ThenInclude(a => a.Tipo)
                 .Include(h => h.Gesto)
+                .Where(h => h.sk_usuario_id == usuarioId)
                 .OrderByDescending(h => h.sk_actividad_id)
                 .ToListAsync(); // Resolvemos la consulta SQL aquí de forma limpia
 
@@ -46,10 +50,7 @@ namespace backend.Controllers
 
                 Dispositivo = h.Aparato != null ? h.Aparato.nombre_aparato ?? "Dispositivo" : "Dispositivo",
 
-                Icono = h.Aparato != null && (h.Aparato.nombre_aparato ?? "").ToLower().Contains("luz") ? "lightbulb" :
-                        h.Aparato != null && (h.Aparato.nombre_aparato ?? "").ToLower().Contains("tv") ? "tv" :
-                        h.Aparato != null && (h.Aparato.nombre_aparato ?? "").ToLower().Contains("bocina") ? "speaker" :
-                        h.Aparato != null && (h.Aparato.nombre_aparato ?? "").ToLower().Contains("vent") ? "fan" : "air-vent",
+                Icono = h.Aparato != null ? (!string.IsNullOrEmpty(h.Aparato.icono) ? h.Aparato.icono : (h.Aparato.Tipo != null ? h.Aparato.Tipo.nombre_tipo : "circle-plus")) : "circle-plus",
 
                 Color = h.Aparato != null && (h.Aparato.nombre_aparato ?? "").ToLower().Contains("luz") ? "#f97316" :
                         h.Aparato != null && (h.Aparato.nombre_aparato ?? "").ToLower().Contains("tv") ? "#8b5cf6" :

@@ -19,8 +19,9 @@ namespace backend.Middleware
             
             if (context.Request.Path.StartsWithSegments("/api"))
             {
-                if (!context.Request.Path.Equals("/api/Auth/login") &&
-                    !context.Request.Path.Equals("/api/Auth/register"))
+                if (!context.Request.Path.StartsWithSegments("/api/Auth/login", StringComparison.OrdinalIgnoreCase) &&
+                    !context.Request.Path.StartsWithSegments("/api/Auth/register", StringComparison.OrdinalIgnoreCase) &&
+                    !context.Request.Path.StartsWithSegments("/api/Auth/google-login", StringComparison.OrdinalIgnoreCase))
                 {
                     var authorization = context.Request.Headers["Authorization"].ToString();
 

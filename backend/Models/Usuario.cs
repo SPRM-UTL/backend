@@ -9,6 +9,9 @@ namespace backend.Models
         [Key]
         public int sk_usuario_id {  get; set; }
 
+        [MaxLength(255)]
+        public string? google_id { get; set; }
+
         [MaxLength(100)]
         public string? nombre_usuario { get; set; }
 

@@ -560,144 +560,6 @@ CONEXION=server=localhost;port=3306;database=pruebaasp;uid=root;password=root;
 }
 </file>
 
-<file path="backend/Controllers/CameraProxyController.cs">
-using backend.Models;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using System.Net.WebSockets;
-
-namespace backend.Controllers
-{
-    [Route("ws/camera")]
-    public class CameraProxyController : ControllerBase
-    {
-        private readonly PruebaaspContext _context;
-        private readonly ILogger<CameraProxyController> _logger;
-
-        public CameraProxyController(PruebaaspContext context, ILogger<CameraProxyController> logger)
-        {
-            _context = context;
-            _logger = logger;
-        }
-
-        [HttpGet("view/{deviceKey}")]
-        public async Task ConnectCamera(
-            string deviceKey,
-            CancellationToken cancellationToken)
-        {
-            if (!HttpContext.WebSockets.IsWebSocketRequest)
-            {
-                HttpContext.Response.StatusCode = 400;
-                return;
-            }
-
-            using var clientSocket = await HttpContext.WebSockets.AcceptWebSocketAsync();
-
-            var config = await _context.AparatoConfiguracionesRed
-                .FirstOrDefaultAsync(c => c.device_key == deviceKey, cancellationToken);
-
-            if (config == null || string.IsNullOrWhiteSpace(config.ip_address))
-            {
-                _logger.LogWarning("Cámara {DeviceKey} no tiene IP configurada", deviceKey);
-                await clientSocket.CloseAsync(
-                    WebSocketCloseStatus.EndpointUnavailable,
-                    "Cámara sin IP configurada",
-                    cancellationToken);
-                return;
-            }
-
-            var esp32Ip = config.ip_address;
-            var streamUrl = $"http://{esp32Ip}:81/stream";
-            _logger.LogInformation("Proxy cámara {DeviceKey} → {Url}", deviceKey, streamUrl);
-
-            using var httpClient = new HttpClient { Timeout = Timeout.InfiniteTimeSpan };
-            using var response = await httpClient.GetAsync(
-                streamUrl,
-                HttpCompletionOption.ResponseHeadersRead,
-                cancellationToken);
-
-            if (!response.IsSuccessStatusCode)
-            {
-                _logger.LogError("No se pudo conectar al stream de {DeviceKey} en {Url}", deviceKey, streamUrl);
-                await clientSocket.CloseAsync(
-                    WebSocketCloseStatus.EndpointUnavailable,
-                    "No se pudo conectar al stream de la cámara",
-                    cancellationToken);
-                return;
-            }
-
-            var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
-            var buffer = new byte[4096];
-            var jpegBuffer = new List<byte>();
-            bool inJpeg = false;
-
-            try
-            {
-                while (!cancellationToken.IsCancellationRequested &&
-                       clientSocket.State == WebSocketState.Open)
-                {
-                    var bytesRead = await stream.ReadAsync(buffer, 0, buffer.Length, cancellationToken);
-                    if (bytesRead == 0) break;
-
-                    for (int i = 0; i < bytesRead; i++)
-                    {
-                        byte b = buffer[i];
-
-                        // Detect JPEG SOI marker (FF D8)
-                        if (!inJpeg && i + 1 < bytesRead && b == 0xFF && buffer[i + 1] == 0xD8)
-                        {
-                            inJpeg = true;
-                            jpegBuffer.Clear();
-                            jpegBuffer.Add(b);
-                            continue;
-                        }
-
-                        if (inJpeg)
-                        {
-                            jpegBuffer.Add(b);
-
-                            // Detect JPEG EOI marker (FF D9)
-                            if (b == 0xD9 && jpegBuffer.Count >= 2 &&
-                                jpegBuffer[jpegBuffer.Count - 2] == 0xFF)
-                            {
-                                inJpeg = false;
-                                var jpegData = jpegBuffer.ToArray();
-                                jpegBuffer.Clear();
-
-                                // Send frame to frontend client
-                                if (clientSocket.State == WebSocketState.Open)
-                                {
-                                    await clientSocket.SendAsync(
-                                        jpegData,
-                                        WebSocketMessageType.Binary,
-                                        true,
-                                        cancellationToken);
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-            catch (Exception ex) when (ex is not OperationCanceledException)
-            {
-                _logger.LogError(ex, "Error en proxy de cámara {DeviceKey}", deviceKey);
-            }
-            finally
-            {
-                try
-                {
-                    await clientSocket.CloseAsync(
-                        WebSocketCloseStatus.NormalClosure,
-                        "Stream finalizado",
-                        CancellationToken.None);
-                }
-                catch { }
-            }
-        }
-    }
-}
-</file>
-
 <file path="backend/Controllers/HomeController.cs">
 using System.Diagnostics;
 using backend.Models;
@@ -84009,6 +83871,144 @@ namespace backend.Controllers
 }
 </file>
 
+<file path="backend/Controllers/CameraProxyController.cs">
+using backend.Models;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using System.Net.WebSockets;
+
+namespace backend.Controllers
+{
+    [Route("ws/camera")]
+    public class CameraProxyController : ControllerBase
+    {
+        private readonly PruebaaspContext _context;
+        private readonly ILogger<CameraProxyController> _logger;
+
+        public CameraProxyController(PruebaaspContext context, ILogger<CameraProxyController> logger)
+        {
+            _context = context;
+            _logger = logger;
+        }
+
+        [HttpGet("view/{deviceKey}")]
+        public async Task ConnectCamera(
+            string deviceKey,
+            CancellationToken cancellationToken)
+        {
+            if (!HttpContext.WebSockets.IsWebSocketRequest)
+            {
+                HttpContext.Response.StatusCode = 400;
+                return;
+            }
+
+            using var clientSocket = await HttpContext.WebSockets.AcceptWebSocketAsync();
+
+            var config = await _context.AparatoConfiguracionesRed
+                .FirstOrDefaultAsync(c => c.device_key == deviceKey, cancellationToken);
+
+            if (config == null || string.IsNullOrWhiteSpace(config.ip_address))
+            {
+                _logger.LogWarning("Cámara {DeviceKey} no tiene IP configurada", deviceKey);
+                await clientSocket.CloseAsync(
+                    WebSocketCloseStatus.EndpointUnavailable,
+                    "Cámara sin IP configurada",
+                    cancellationToken);
+                return;
+            }
+
+            var esp32Ip = config.ip_address;
+            var streamUrl = $"http://{esp32Ip}:81/stream";
+            _logger.LogInformation("Proxy cámara {DeviceKey} → {Url}", deviceKey, streamUrl);
+
+            using var httpClient = new HttpClient { Timeout = Timeout.InfiniteTimeSpan };
+            using var response = await httpClient.GetAsync(
+                streamUrl,
+                HttpCompletionOption.ResponseHeadersRead,
+                cancellationToken);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                _logger.LogError("No se pudo conectar al stream de {DeviceKey} en {Url}", deviceKey, streamUrl);
+                await clientSocket.CloseAsync(
+                    WebSocketCloseStatus.EndpointUnavailable,
+                    "No se pudo conectar al stream de la cámara",
+                    cancellationToken);
+                return;
+            }
+
+            var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
+            var buffer = new byte[4096];
+            var jpegBuffer = new List<byte>();
+            bool inJpeg = false;
+
+            try
+            {
+                while (!cancellationToken.IsCancellationRequested &&
+                       clientSocket.State == WebSocketState.Open)
+                {
+                    var bytesRead = await stream.ReadAsync(buffer, 0, buffer.Length, cancellationToken);
+                    if (bytesRead == 0) break;
+
+                    for (int i = 0; i < bytesRead; i++)
+                    {
+                        byte b = buffer[i];
+
+                        // Detect JPEG SOI marker (FF D8)
+                        if (!inJpeg && i + 1 < bytesRead && b == 0xFF && buffer[i + 1] == 0xD8)
+                        {
+                            inJpeg = true;
+                            jpegBuffer.Clear();
+                            jpegBuffer.Add(b);
+                            continue;
+                        }
+
+                        if (inJpeg)
+                        {
+                            jpegBuffer.Add(b);
+
+                            // Detect JPEG EOI marker (FF D9)
+                            if (b == 0xD9 && jpegBuffer.Count >= 2 &&
+                                jpegBuffer[jpegBuffer.Count - 2] == 0xFF)
+                            {
+                                inJpeg = false;
+                                var jpegData = jpegBuffer.ToArray();
+                                jpegBuffer.Clear();
+
+                                // Send frame to frontend client
+                                if (clientSocket.State == WebSocketState.Open)
+                                {
+                                    await clientSocket.SendAsync(
+                                        jpegData,
+                                        WebSocketMessageType.Binary,
+                                        true,
+                                        cancellationToken);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                _logger.LogError(ex, "Error en proxy de cámara {DeviceKey}", deviceKey);
+            }
+            finally
+            {
+                try
+                {
+                    await clientSocket.CloseAsync(
+                        WebSocketCloseStatus.NormalClosure,
+                        "Stream finalizado",
+                        CancellationToken.None);
+                }
+                catch { }
+            }
+        }
+    }
+}
+</file>
+
 <file path="backend/Controllers/CatalogoGestosController.cs">
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -84450,26 +84450,6 @@ namespace backend.DTOs
     {
         [JsonPropertyName("nombre_casa")]
         public string? NombreCasa { get; set; }
-    }
-}
-</file>
-
-<file path="backend/DTOs/CatalogoGestoDto.cs">
-namespace backend.DTOs
-{
-    public class CatalogoGestoDto
-    {
-        public int SkCatalogoGestoId { get; set; }
-        public string Nombre { get; set; } = string.Empty;
-        public string Icono { get; set; } = string.Empty;
-        public bool IsBodyGesture { get; set; }
-        public bool IsActive { get; set; }
-    }
-
-    public class GuardarConfiguracionGestosDto
-    {
-        public int SkCatalogoGestoId { get; set; }
-        public bool IsActive { get; set; }
     }
 }
 </file>
@@ -102397,32 +102377,6 @@ namespace backend.Models
 }
 </file>
 
-<file path="backend/Models/CatalogoGesto.cs">
-using System.ComponentModel.DataAnnotations;
-using System.ComponentModel.DataAnnotations.Schema;
-
-namespace backend.Models
-{
-    public class CatalogoGesto
-    {
-        [Key]
-        public int sk_catalogo_gesto_id { get; set; }
-
-        [Required]
-        [MaxLength(100)]
-        public string nombre { get; set; } = string.Empty;
-
-        [Required]
-        [MaxLength(50)]
-        public string icono { get; set; } = string.Empty;
-
-        public bool is_body_gesture { get; set; }
-
-        public virtual ICollection<UsuarioGestoConfig> UsuarioConfiguraciones { get; set; } = new List<UsuarioGestoConfig>();
-    }
-}
-</file>
-
 <file path="backend/Models/GestoDetalle.cs">
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
@@ -102669,28 +102623,6 @@ namespace backend.Models
 
         [ForeignKey(nameof(sk_usuario_id))]
         public Usuario? Usuario { get; set; }
-    }
-}
-</file>
-
-<file path="backend/Models/UsuarioGestoConfig.cs">
-using System.ComponentModel.DataAnnotations;
-using System.ComponentModel.DataAnnotations.Schema;
-
-namespace backend.Models
-{
-    public class UsuarioGestoConfig
-    {
-        public int sk_usuario_id { get; set; }
-        public int sk_catalogo_gesto_id { get; set; }
-
-        public bool is_active { get; set; }
-
-        [ForeignKey("sk_usuario_id")]
-        public virtual Usuario Usuario { get; set; } = null!;
-
-        [ForeignKey("sk_catalogo_gesto_id")]
-        public virtual CatalogoGesto CatalogoGesto { get; set; } = null!;
     }
 }
 </file>
@@ -108692,6 +108624,26 @@ namespace backend.DTOs
 }
 </file>
 
+<file path="backend/DTOs/CatalogoGestoDto.cs">
+namespace backend.DTOs
+{
+    public class CatalogoGestoDto
+    {
+        public int SkCatalogoGestoId { get; set; }
+        public string Nombre { get; set; } = string.Empty;
+        public string Icono { get; set; } = string.Empty;
+        public bool IsBodyGesture { get; set; }
+        public bool IsActive { get; set; }
+    }
+
+    public class GuardarConfiguracionGestosDto
+    {
+        public int SkCatalogoGestoId { get; set; }
+        public bool IsActive { get; set; }
+    }
+}
+</file>
+
 <file path="backend/DTOs/UsuarioProfileDto.cs">
 using System.Text.Json.Serialization;
 
@@ -108742,6 +108694,54 @@ namespace backend.Migrations
             migrationBuilder.DropTable(
                 name: "catalogo_gesto");
         }
+    }
+}
+</file>
+
+<file path="backend/Models/CatalogoGesto.cs">
+using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
+
+namespace backend.Models
+{
+    public class CatalogoGesto
+    {
+        [Key]
+        public int sk_catalogo_gesto_id { get; set; }
+
+        [Required]
+        [MaxLength(100)]
+        public string nombre { get; set; } = string.Empty;
+
+        [Required]
+        [MaxLength(50)]
+        public string icono { get; set; } = string.Empty;
+
+        public bool is_body_gesture { get; set; }
+
+        public virtual ICollection<UsuarioGestoConfig> UsuarioConfiguraciones { get; set; } = new List<UsuarioGestoConfig>();
+    }
+}
+</file>
+
+<file path="backend/Models/UsuarioGestoConfig.cs">
+using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
+
+namespace backend.Models
+{
+    public class UsuarioGestoConfig
+    {
+        public int sk_usuario_id { get; set; }
+        public int sk_catalogo_gesto_id { get; set; }
+
+        public bool is_active { get; set; }
+
+        [ForeignKey("sk_usuario_id")]
+        public virtual Usuario Usuario { get; set; } = null!;
+
+        [ForeignKey("sk_catalogo_gesto_id")]
+        public virtual CatalogoGesto CatalogoGesto { get; set; } = null!;
     }
 }
 </file>
@@ -109835,6 +109835,259 @@ namespace backend.Models
 }
 </file>
 
+<file path="backend/Controllers/AparatosConsumoHistoricoController.cs">
+using backend.Models;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using backend.DTOs;
+using System;
+using System.Linq;
+using System.Threading.Tasks;
+using System.Collections.Generic;
+
+namespace backend.Controllers
+{
+    [ApiController]
+    [Route("api/[controller]")]
+    public class AparatosConsumoHistoricoController : Controller
+    {
+        public readonly PruebaaspContext _context;
+
+        public AparatosConsumoHistoricoController(PruebaaspContext context)
+        {
+            _context = context;
+        }
+
+        // Historial de todos los aparatos de un usuario
+        [HttpGet("usuario/{usuarioId}/consumo_historico")]
+        public async Task<ActionResult<IEnumerable<AparatoConsumoDto>>> GetConsumoHistoricoPorUsuario(
+            [FromRoute] int usuarioId,
+            [FromQuery] int limit = 100,
+            [FromQuery] DateTime? desde = null,
+            [FromQuery] DateTime? hasta = null)
+        {
+            var usuarioSolicitadoId = usuarioId;
+
+            if (usuarioSolicitadoId == 0)
+            {
+                return Unauthorized(new { message = "Usuario no autenticado" });
+            }
+
+            limit = Math.Clamp(limit, 1, 2000);
+
+            var query = from consumo in _context.AparatoConsumoHistoricos
+                        join config in _context.AparatoConfiguracionesRed
+                            on consumo.sk_aparato_configuracion_red_id equals config.sk_aparato_configuracion_red_id
+                        join aparato in _context.Aparatos
+                            on config.sk_aparato_id equals aparato.sk_aparato_id
+                        where aparato.sk_usuario_id == usuarioSolicitadoId
+                        select new { consumo, config.sk_aparato_id };
+
+            if (desde.HasValue)
+                query = query.Where(q => q.consumo.fecha_medicion >= desde.Value);
+
+            if (hasta.HasValue)
+                query = query.Where(q => q.consumo.fecha_medicion <= hasta.Value);
+
+            var historico = await query
+                .OrderBy(q => q.consumo.fecha_medicion)
+                .Take(limit)
+                .Select(q => new AparatoConsumoDto
+                {
+                    SkConsumoId = q.consumo.sk_consumo_id,
+                    SkAparatoId = q.sk_aparato_id,
+                    CorrienteA = q.consumo.corriente_a,
+                    PotenciaW = q.consumo.potencia_w,
+                    EnergiaWh = q.consumo.energia_wh,
+                    FechaMedicion = q.consumo.fecha_medicion
+                })
+                .ToListAsync();
+
+            if (!historico.Any())
+            {
+                return NotFound("No se encontraron registros de consumo para tus aparatos.");
+            }
+
+            return Ok(historico);
+        }
+
+        [HttpGet("todos_los_consumos/resumen")]
+        public async Task<ActionResult<AparatoConsumoResumenDto>> GetConsumoResumenGlobal(
+            [FromQuery] string granularidad = "dia",
+            [FromQuery] DateTime? desde = null,
+            [FromQuery] DateTime? hasta = null)
+        {
+            var usuarioId = (int?)HttpContext.Items["UsuarioId"];
+
+            var query = from consumo in _context.AparatoConsumoHistoricos
+                        join config in _context.AparatoConfiguracionesRed
+                            on consumo.sk_aparato_configuracion_red_id equals config.sk_aparato_configuracion_red_id
+                        join aparato in _context.Aparatos
+                            on config.sk_aparato_id equals aparato.sk_aparato_id
+                        where aparato.sk_usuario_id == usuarioId 
+                        select new { consumo, config.sk_aparato_configuracion_red_id };
+
+            if (desde.HasValue)
+                query = query.Where(q => q.consumo.fecha_medicion >= desde.Value);
+
+            if (hasta.HasValue)
+                query = query.Where(q => q.consumo.fecha_medicion <= hasta.Value);
+
+            var lecturasAnom = await query.OrderBy(q => q.consumo.fecha_medicion).ToListAsync();
+
+            var resumen = new AparatoConsumoResumenDto
+            {
+                Granularidad = granularidad,
+                Desde = desde ?? (lecturasAnom.Any() ? lecturasAnom.Min(l => l.consumo.fecha_medicion) : DateTime.UtcNow.Date),
+                Hasta = hasta ?? (lecturasAnom.Any() ? lecturasAnom.Max(l => l.consumo.fecha_medicion) : DateTime.UtcNow.Date),
+                Puntos = new List<AparatoConsumoPuntoDto>()
+            };
+
+            if (!lecturasAnom.Any())
+                return Ok(resumen);
+
+            if (granularidad.ToLower() == "envivo")
+            {
+                var gruposEnVivo = lecturasAnom
+                    .GroupBy(l => new DateTime(l.consumo.fecha_medicion.Year, l.consumo.fecha_medicion.Month, l.consumo.fecha_medicion.Day, l.consumo.fecha_medicion.Hour, l.consumo.fecha_medicion.Minute, 0, l.consumo.fecha_medicion.Kind))
+                    .OrderByDescending(g => g.Key)
+                    .Take(60)
+                    .OrderBy(g => g.Key);
+
+                foreach (var grupo in gruposEnVivo)
+                {
+                    float energiaTotal = 0;
+                    var porDispositivo = grupo.GroupBy(g => g.sk_aparato_configuracion_red_id);
+                    foreach (var devGrp in porDispositivo)
+                    {
+                        energiaTotal += (float)(devGrp.Max(l => l.consumo.energia_wh) - devGrp.Min(l => l.consumo.energia_wh));
+                    }
+
+                    resumen.Puntos.Add(new AparatoConsumoPuntoDto
+                    {
+                        Periodo = grupo.Key,
+                        PotenciaPromedioW = porDispositivo.Sum(d => (float)d.Average(l => l.consumo.potencia_w)),
+                        CorrientePromedioA = porDispositivo.Sum(d => (float)d.Average(l => l.consumo.corriente_a)),
+                        EnergiaConsumidaWh = energiaTotal
+                    });
+                }
+                return Ok(resumen);
+            }
+
+            var gruposTemporales = granularidad.ToLower() == "año"
+                ? lecturasAnom.GroupBy(l => new DateTime(l.consumo.fecha_medicion.Year, l.consumo.fecha_medicion.Month, 1, 0, 0, 0, l.consumo.fecha_medicion.Kind))
+                : (granularidad.ToLower() == "mes"
+                    ? lecturasAnom.GroupBy(l => l.consumo.fecha_medicion.Date)
+                    : lecturasAnom.GroupBy(l => new DateTime(l.consumo.fecha_medicion.Year, l.consumo.fecha_medicion.Month, l.consumo.fecha_medicion.Day, l.consumo.fecha_medicion.Hour, 0, 0, l.consumo.fecha_medicion.Kind)));
+
+            foreach (var grupo in gruposTemporales)
+            {
+                float energiaTotal = 0;
+                var porDispositivo = grupo.GroupBy(g => g.sk_aparato_configuracion_red_id);
+                foreach (var devGrp in porDispositivo)
+                {
+                    energiaTotal += (float)(devGrp.Max(l => l.consumo.energia_wh) - devGrp.Min(l => l.consumo.energia_wh));
+                }
+
+                var p = new AparatoConsumoPuntoDto
+                {
+                    Periodo = grupo.Key,
+                    PotenciaPromedioW = porDispositivo.Sum(d => (float)d.Average(l => l.consumo.potencia_w)),
+                    CorrientePromedioA = porDispositivo.Sum(d => (float)d.Average(l => l.consumo.corriente_a)),
+                    EnergiaConsumidaWh = energiaTotal
+                };
+                resumen.Puntos.Add(p);
+            }
+
+            return Ok(resumen);
+        }
+
+        // Mantienes tu endpoint individual original abajo si lo necesitas...
+        [HttpGet("aparato/{sk_aparato_id}/consumo_historico")]
+        public async Task<ActionResult<IEnumerable<AparatoConsumoDto>>> GetConsumoHistorico(
+            int sk_aparato_id,
+            [FromQuery] int limit = 100,
+            [FromQuery] DateTime? desde = null,
+            [FromQuery] DateTime? hasta = null)
+        {
+            var usuarioId = (int?)HttpContext.Items["UsuarioId"];
+            var aparato = await _context.Aparatos
+                .Include(a => a.ConfiguracionRed)
+                .FirstOrDefaultAsync(a => a.sk_aparato_id == sk_aparato_id && a.sk_usuario_id == usuarioId); // Corregido aquí también
+
+            if (aparato?.ConfiguracionRed == null)
+            {
+                return NotFound("El aparato no tiene configuracion de red o no te pertenece");
+            }
+
+            limit = Math.Clamp(limit, 1, 500);
+            var query = _context.AparatoConsumoHistoricos
+                .Where(c => c.sk_aparato_configuracion_red_id == aparato.ConfiguracionRed.sk_aparato_configuracion_red_id);
+
+            if (desde.HasValue) query = query.Where(c => c.fecha_medicion >= desde.Value);
+            if (hasta.HasValue) query = query.Where(c => c.fecha_medicion <= hasta.Value); // Corregido aquí también
+
+            var historico = await query
+                .OrderBy(c => c.fecha_medicion)
+                .Take(limit)
+                .Select(c => new AparatoConsumoDto
+                {
+                    SkConsumoId = c.sk_consumo_id,
+                    SkAparatoId = sk_aparato_id,
+                    CorrienteA = c.corriente_a,
+                    PotenciaW = c.potencia_w,
+                    EnergiaWh = c.energia_wh,
+                    FechaMedicion = c.fecha_medicion
+                }).ToListAsync();
+
+
+            return Ok(historico);
+        }
+
+        [HttpGet("{usuarioId}/resumen_dona")]
+        public async Task<ActionResult<IEnumerable<object>>> GetConsumoDonaPorUsuario(
+        [FromRoute] int usuarioId,
+        [FromQuery] DateTime? desde = null,
+        [FromQuery] DateTime? hasta = null)
+        {
+            if (usuarioId == 0)
+            {
+                return Unauthorized(new { message = "Usuario no autenticado" });
+            }
+
+            var query = from consumo in _context.AparatoConsumoHistoricos
+                        join config in _context.AparatoConfiguracionesRed
+                            on consumo.sk_aparato_configuracion_red_id equals config.sk_aparato_configuracion_red_id
+                        join aparato in _context.Aparatos
+                            on config.sk_aparato_id equals aparato.sk_aparato_id
+                        where aparato.sk_usuario_id == usuarioId
+                        select new { consumo, aparato.nombre_aparato };
+
+            if (desde.HasValue)
+                query = query.Where(q => q.consumo.fecha_medicion >= desde.Value);
+
+            if (hasta.HasValue)
+                query = query.Where(q => q.consumo.fecha_medicion <= hasta.Value);
+
+            var lecturas = await query.ToListAsync();
+
+            var resultado = lecturas
+                .GroupBy(q => q.nombre_aparato)
+                .Select(g => new
+                {
+                    Aparato = g.Key,
+                    TotalEnergiaWh = g.Max(x => x.consumo.energia_wh) - g.Min(x => x.consumo.energia_wh)
+                })
+                .ToList();
+
+            return Ok(resultado);
+        }
+
+
+    }
+}
+</file>
+
 <file path="backend/Services/Esp32DeviceStateService.cs">
 using System.Text.Json;
 using backend.Models;
@@ -110044,6 +110297,7 @@ namespace backend.Services
             return false;
         }
 
+
         public async Task ProcessInboundMessageAsync(
             int configuracionRedId,
             string message,
@@ -110053,6 +110307,11 @@ namespace backend.Services
             {
                 await ProcessTelemetryAsync(configuracionRedId, telemetry, cancellationToken);
                 return;
+            }
+
+            if (TryParseCameraIp(message, out var cameraIp))
+            {
+                await UpdateCameraIpAsync(configuracionRedId, cameraIp, cancellationToken);
             }
 
             var payload = TryDeserializeJson(message, out var jsonRoot)
@@ -110076,6 +110335,47 @@ namespace backend.Services
             {
                 var origen = message.TrimStart().StartsWith('{') ? "esp32_json" : "esp32_ack";
                 await UpdatePowerStateAsync(configuracionRedId, powerState.Value, origen, cancellationToken);
+            }
+        }
+
+        private bool TryParseCameraIp(string message, out string ip)
+        {
+            ip = string.Empty;
+            if (string.IsNullOrWhiteSpace(message) || !message.TrimStart().StartsWith('{'))
+            {
+                return false;
+            }
+
+            try
+            {
+                using var doc = JsonDocument.Parse(message);
+                var root = doc.RootElement;
+                if (root.TryGetProperty("action", out var actionProp) &&
+                    actionProp.GetString() == "camera_ip" &&
+                    root.TryGetProperty("ip", out var ipProp))
+                {
+                    ip = ipProp.GetString() ?? string.Empty;
+                    return !string.IsNullOrEmpty(ip);
+                }
+            }
+            catch (JsonException)
+            {
+            }
+            return false;
+        }
+
+        private async Task UpdateCameraIpAsync(int configuracionRedId, string ip, CancellationToken cancellationToken)
+        {
+            await using var scope = _scopeFactory.CreateAsyncScope();
+            var db = scope.ServiceProvider.GetRequiredService<PruebaaspContext>();
+
+            var config = await db.AparatoConfiguracionesRed
+                .FirstOrDefaultAsync(c => c.sk_aparato_configuracion_red_id == configuracionRedId, cancellationToken);
+
+            if (config != null && config.ip_address != ip)
+            {
+                config.ip_address = ip;
+                await db.SaveChangesAsync(cancellationToken);
             }
         }
 
@@ -110438,259 +110738,6 @@ namespace backend.Services
                 return false;
             }
         }
-    }
-}
-</file>
-
-<file path="backend/Controllers/AparatosConsumoHistoricoController.cs">
-using backend.Models;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using backend.DTOs;
-using System;
-using System.Linq;
-using System.Threading.Tasks;
-using System.Collections.Generic;
-
-namespace backend.Controllers
-{
-    [ApiController]
-    [Route("api/[controller]")]
-    public class AparatosConsumoHistoricoController : Controller
-    {
-        public readonly PruebaaspContext _context;
-
-        public AparatosConsumoHistoricoController(PruebaaspContext context)
-        {
-            _context = context;
-        }
-
-        // Historial de todos los aparatos de un usuario
-        [HttpGet("usuario/{usuarioId}/consumo_historico")]
-        public async Task<ActionResult<IEnumerable<AparatoConsumoDto>>> GetConsumoHistoricoPorUsuario(
-            [FromRoute] int usuarioId,
-            [FromQuery] int limit = 100,
-            [FromQuery] DateTime? desde = null,
-            [FromQuery] DateTime? hasta = null)
-        {
-            var usuarioSolicitadoId = usuarioId;
-
-            if (usuarioSolicitadoId == 0)
-            {
-                return Unauthorized(new { message = "Usuario no autenticado" });
-            }
-
-            limit = Math.Clamp(limit, 1, 2000);
-
-            var query = from consumo in _context.AparatoConsumoHistoricos
-                        join config in _context.AparatoConfiguracionesRed
-                            on consumo.sk_aparato_configuracion_red_id equals config.sk_aparato_configuracion_red_id
-                        join aparato in _context.Aparatos
-                            on config.sk_aparato_id equals aparato.sk_aparato_id
-                        where aparato.sk_usuario_id == usuarioSolicitadoId
-                        select new { consumo, config.sk_aparato_id };
-
-            if (desde.HasValue)
-                query = query.Where(q => q.consumo.fecha_medicion >= desde.Value);
-
-            if (hasta.HasValue)
-                query = query.Where(q => q.consumo.fecha_medicion <= hasta.Value);
-
-            var historico = await query
-                .OrderBy(q => q.consumo.fecha_medicion)
-                .Take(limit)
-                .Select(q => new AparatoConsumoDto
-                {
-                    SkConsumoId = q.consumo.sk_consumo_id,
-                    SkAparatoId = q.sk_aparato_id,
-                    CorrienteA = q.consumo.corriente_a,
-                    PotenciaW = q.consumo.potencia_w,
-                    EnergiaWh = q.consumo.energia_wh,
-                    FechaMedicion = q.consumo.fecha_medicion
-                })
-                .ToListAsync();
-
-            if (!historico.Any())
-            {
-                return NotFound("No se encontraron registros de consumo para tus aparatos.");
-            }
-
-            return Ok(historico);
-        }
-
-        [HttpGet("todos_los_consumos/resumen")]
-        public async Task<ActionResult<AparatoConsumoResumenDto>> GetConsumoResumenGlobal(
-            [FromQuery] string granularidad = "dia",
-            [FromQuery] DateTime? desde = null,
-            [FromQuery] DateTime? hasta = null)
-        {
-            var usuarioId = (int?)HttpContext.Items["UsuarioId"];
-
-            var query = from consumo in _context.AparatoConsumoHistoricos
-                        join config in _context.AparatoConfiguracionesRed
-                            on consumo.sk_aparato_configuracion_red_id equals config.sk_aparato_configuracion_red_id
-                        join aparato in _context.Aparatos
-                            on config.sk_aparato_id equals aparato.sk_aparato_id
-                        where aparato.sk_usuario_id == usuarioId 
-                        select new { consumo, config.sk_aparato_configuracion_red_id };
-
-            if (desde.HasValue)
-                query = query.Where(q => q.consumo.fecha_medicion >= desde.Value);
-
-            if (hasta.HasValue)
-                query = query.Where(q => q.consumo.fecha_medicion <= hasta.Value);
-
-            var lecturasAnom = await query.OrderBy(q => q.consumo.fecha_medicion).ToListAsync();
-
-            var resumen = new AparatoConsumoResumenDto
-            {
-                Granularidad = granularidad,
-                Desde = desde ?? (lecturasAnom.Any() ? lecturasAnom.Min(l => l.consumo.fecha_medicion) : DateTime.UtcNow.Date),
-                Hasta = hasta ?? (lecturasAnom.Any() ? lecturasAnom.Max(l => l.consumo.fecha_medicion) : DateTime.UtcNow.Date),
-                Puntos = new List<AparatoConsumoPuntoDto>()
-            };
-
-            if (!lecturasAnom.Any())
-                return Ok(resumen);
-
-            if (granularidad.ToLower() == "envivo")
-            {
-                var gruposEnVivo = lecturasAnom
-                    .GroupBy(l => new DateTime(l.consumo.fecha_medicion.Year, l.consumo.fecha_medicion.Month, l.consumo.fecha_medicion.Day, l.consumo.fecha_medicion.Hour, l.consumo.fecha_medicion.Minute, 0, l.consumo.fecha_medicion.Kind))
-                    .OrderByDescending(g => g.Key)
-                    .Take(60)
-                    .OrderBy(g => g.Key);
-
-                foreach (var grupo in gruposEnVivo)
-                {
-                    float energiaTotal = 0;
-                    var porDispositivo = grupo.GroupBy(g => g.sk_aparato_configuracion_red_id);
-                    foreach (var devGrp in porDispositivo)
-                    {
-                        energiaTotal += (float)(devGrp.Max(l => l.consumo.energia_wh) - devGrp.Min(l => l.consumo.energia_wh));
-                    }
-
-                    resumen.Puntos.Add(new AparatoConsumoPuntoDto
-                    {
-                        Periodo = grupo.Key,
-                        PotenciaPromedioW = porDispositivo.Sum(d => (float)d.Average(l => l.consumo.potencia_w)),
-                        CorrientePromedioA = porDispositivo.Sum(d => (float)d.Average(l => l.consumo.corriente_a)),
-                        EnergiaConsumidaWh = energiaTotal
-                    });
-                }
-                return Ok(resumen);
-            }
-
-            var gruposTemporales = granularidad.ToLower() == "año"
-                ? lecturasAnom.GroupBy(l => new DateTime(l.consumo.fecha_medicion.Year, l.consumo.fecha_medicion.Month, 1, 0, 0, 0, l.consumo.fecha_medicion.Kind))
-                : (granularidad.ToLower() == "mes"
-                    ? lecturasAnom.GroupBy(l => l.consumo.fecha_medicion.Date)
-                    : lecturasAnom.GroupBy(l => new DateTime(l.consumo.fecha_medicion.Year, l.consumo.fecha_medicion.Month, l.consumo.fecha_medicion.Day, l.consumo.fecha_medicion.Hour, 0, 0, l.consumo.fecha_medicion.Kind)));
-
-            foreach (var grupo in gruposTemporales)
-            {
-                float energiaTotal = 0;
-                var porDispositivo = grupo.GroupBy(g => g.sk_aparato_configuracion_red_id);
-                foreach (var devGrp in porDispositivo)
-                {
-                    energiaTotal += (float)(devGrp.Max(l => l.consumo.energia_wh) - devGrp.Min(l => l.consumo.energia_wh));
-                }
-
-                var p = new AparatoConsumoPuntoDto
-                {
-                    Periodo = grupo.Key,
-                    PotenciaPromedioW = porDispositivo.Sum(d => (float)d.Average(l => l.consumo.potencia_w)),
-                    CorrientePromedioA = porDispositivo.Sum(d => (float)d.Average(l => l.consumo.corriente_a)),
-                    EnergiaConsumidaWh = energiaTotal
-                };
-                resumen.Puntos.Add(p);
-            }
-
-            return Ok(resumen);
-        }
-
-        // Mantienes tu endpoint individual original abajo si lo necesitas...
-        [HttpGet("aparato/{sk_aparato_id}/consumo_historico")]
-        public async Task<ActionResult<IEnumerable<AparatoConsumoDto>>> GetConsumoHistorico(
-            int sk_aparato_id,
-            [FromQuery] int limit = 100,
-            [FromQuery] DateTime? desde = null,
-            [FromQuery] DateTime? hasta = null)
-        {
-            var usuarioId = (int?)HttpContext.Items["UsuarioId"];
-            var aparato = await _context.Aparatos
-                .Include(a => a.ConfiguracionRed)
-                .FirstOrDefaultAsync(a => a.sk_aparato_id == sk_aparato_id && a.sk_usuario_id == usuarioId); // Corregido aquí también
-
-            if (aparato?.ConfiguracionRed == null)
-            {
-                return NotFound("El aparato no tiene configuracion de red o no te pertenece");
-            }
-
-            limit = Math.Clamp(limit, 1, 500);
-            var query = _context.AparatoConsumoHistoricos
-                .Where(c => c.sk_aparato_configuracion_red_id == aparato.ConfiguracionRed.sk_aparato_configuracion_red_id);
-
-            if (desde.HasValue) query = query.Where(c => c.fecha_medicion >= desde.Value);
-            if (hasta.HasValue) query = query.Where(c => c.fecha_medicion <= hasta.Value); // Corregido aquí también
-
-            var historico = await query
-                .OrderBy(c => c.fecha_medicion)
-                .Take(limit)
-                .Select(c => new AparatoConsumoDto
-                {
-                    SkConsumoId = c.sk_consumo_id,
-                    SkAparatoId = sk_aparato_id,
-                    CorrienteA = c.corriente_a,
-                    PotenciaW = c.potencia_w,
-                    EnergiaWh = c.energia_wh,
-                    FechaMedicion = c.fecha_medicion
-                }).ToListAsync();
-
-
-            return Ok(historico);
-        }
-
-        [HttpGet("{usuarioId}/resumen_dona")]
-        public async Task<ActionResult<IEnumerable<object>>> GetConsumoDonaPorUsuario(
-        [FromRoute] int usuarioId,
-        [FromQuery] DateTime? desde = null,
-        [FromQuery] DateTime? hasta = null)
-        {
-            if (usuarioId == 0)
-            {
-                return Unauthorized(new { message = "Usuario no autenticado" });
-            }
-
-            var query = from consumo in _context.AparatoConsumoHistoricos
-                        join config in _context.AparatoConfiguracionesRed
-                            on consumo.sk_aparato_configuracion_red_id equals config.sk_aparato_configuracion_red_id
-                        join aparato in _context.Aparatos
-                            on config.sk_aparato_id equals aparato.sk_aparato_id
-                        where aparato.sk_usuario_id == usuarioId
-                        select new { consumo, aparato.nombre_aparato };
-
-            if (desde.HasValue)
-                query = query.Where(q => q.consumo.fecha_medicion >= desde.Value);
-
-            if (hasta.HasValue)
-                query = query.Where(q => q.consumo.fecha_medicion <= hasta.Value);
-
-            var lecturas = await query.ToListAsync();
-
-            var resultado = lecturas
-                .GroupBy(q => q.nombre_aparato)
-                .Select(g => new
-                {
-                    Aparato = g.Key,
-                    TotalEnergiaWh = g.Max(x => x.consumo.energia_wh) - g.Min(x => x.consumo.energia_wh)
-                })
-                .ToList();
-
-            return Ok(resultado);
-        }
-
-
     }
 }
 </file>
@@ -114036,473 +114083,6 @@ public class AparatosController : ControllerBase
 }
 </file>
 
-<file path="backend/Controllers/Esp32WebSocketController.cs">
-using backend.Models;
-using backend.Services;
-using Microsoft.AspNetCore.Mvc;
-using System.Net.WebSockets;
-using System.Text;
-using Microsoft.EntityFrameworkCore;
-using System.Net.Sockets;
-
-namespace backend.Controllers
-{
-    [Route("ws")] 
-    public class Esp32WebSocketController : ControllerBase
-    {
-        private readonly Esp32ConnectionManager _connections;
-        private readonly Esp32MessageRouter _router;
-        private readonly Esp32DeviceStateService _stateService;
-        private readonly ILogger<Esp32WebSocketController> _logger;
-
-        public Esp32WebSocketController(
-            Esp32ConnectionManager connections,
-            Esp32MessageRouter router,
-            Esp32DeviceStateService stateService,
-            ILogger<Esp32WebSocketController> logger)
-        {
-            _connections = connections;
-            _router = router;
-            _stateService = stateService;
-            _logger = logger;
-        }
-
-        [HttpGet]
-        public async Task<IActionResult> Connect(
-            [FromQuery] string deviceKey,
-            [FromQuery] string? token,
-            [FromQuery] string? targetDeviceKey,
-            [FromQuery] string? tipoAparato,
-            CancellationToken cancellationToken)
-        {
-            if (!HttpContext.WebSockets.IsWebSocketRequest)
-            {
-                return BadRequest("La ruta /ws solo acepta peticiones WebSocket.");
-            }
-
-            if (string.IsNullOrWhiteSpace(deviceKey))
-            {
-                return BadRequest("Falta el parametro deviceKey.");
-            }
-
-            var normalizedDeviceKey = deviceKey.Trim();
-            
-            var remoteIpAddress = HttpContext.Connection.RemoteIpAddress;
-            if (remoteIpAddress != null && remoteIpAddress.IsIPv4MappedToIPv6)
-            {
-                remoteIpAddress = remoteIpAddress.MapToIPv4();
-            }
-            var remoteIp = remoteIpAddress?.ToString();
-            
-            using var socket = await HttpContext.WebSockets.AcceptWebSocketAsync();
-
-            var sourceDevice = await _router.RegisterOrUpdateDeviceAsync(normalizedDeviceKey, token, tipoAparato, remoteIp, cancellationToken);
-
-            if (sourceDevice == null)
-            {
-                await socket.CloseAsync(
-                    WebSocketCloseStatus.PolicyViolation,
-                    "deviceKey no registrado en configuracion de red",
-                    cancellationToken);
-
-                return BadRequest("El deviceKey no esta registrado en la configuracion de red de un aparato activo.");
-            }
-
-            await _connections.AddOrReplaceAsync(normalizedDeviceKey, socket, cancellationToken);
-
-            _logger.LogInformation("ESP32 conectado: {DeviceKey}", normalizedDeviceKey);
-
-            try
-            {
-                await _router.ReceiveMessagesAsync(
-                    socket,
-                    sourceDevice.sk_aparato_configuracion_red_id,
-                    targetDeviceKey,
-                    cancellationToken);
-
-                return new EmptyResult();
-            }
-            finally
-            {
-                _connections.Remove(normalizedDeviceKey, socket);
-                _logger.LogInformation("ESP32 desconectado: {DeviceKey}", normalizedDeviceKey);
-            }
-        }
-
-        [HttpGet("accion")]
-        public async Task<IActionResult> EnviarComando(
-            [FromQuery] string comando,
-            [FromQuery] string deviceKey,
-            [FromServices] PruebaaspContext context,
-            CancellationToken cancellationToken)
-        {
-            if (!_connections.TryGetOpenSocket(deviceKey, out var socket))
-            {
-                return NotFound($"No existe una conexión activa para '{deviceKey}'.");
-            }
-
-            await socket!.SendAsync(
-                Encoding.UTF8.GetBytes(comando),
-                WebSocketMessageType.Text,
-                true,
-                cancellationToken);
-
-            var config = await context.AparatoConfiguracionesRed
-                .FirstOrDefaultAsync(c => c.device_key == deviceKey, cancellationToken);
-
-            if (config is not null)
-            {
-                var estado = _stateService.TryParsePowerState(comando);
-                await _stateService.ProcessOutboundCommandAsync(
-                    config.sk_aparato_configuracion_red_id,
-                    comando,
-                    estado,
-                    "accion",
-                    cancellationToken);
-            }
-
-            var contactoComando = _stateService.TryParseOutletCommand(comando, out var contacto, out _)
-                ? contacto
-                : (int?)null;
-
-            return Ok(new
-            {
-                deviceKey,
-                comando,
-                estado_encendido = _stateService.TryParsePowerState(comando),
-                contacto = contactoComando
-            });
-        }
-
-        [HttpGet("status/{deviceKey}")]
-        public async Task<IActionResult> GetStatus(
-            string deviceKey,
-            [FromServices] PruebaaspContext context)
-        {
-            if (string.IsNullOrWhiteSpace(deviceKey))
-            {
-                return BadRequest(new { error = "Falta el parámetro deviceKey." });
-            }
-
-            bool isConnected = _connections.TryGetOpenSocket(deviceKey, out _);
-            var config = await context.AparatoConfiguracionesRed
-                .FirstOrDefaultAsync(c => c.device_key == deviceKey);
-
-            return Ok(new
-            {
-                connected = isConnected,
-                estado_encendido = config?.estado_encendido,
-                estado_encendido_2 = config?.estado_encendido_2,
-                estado_encendido_3 = config?.estado_encendido_3,
-                estado_encendido_4 = config?.estado_encendido_4,
-                fecha_estado_actualizado = config?.fecha_estado_actualizado,
-                origen_estado = config?.origen_estado,
-                corriente_a = config?.corriente_actual,
-                potencia_w = config?.potencia_actual,
-                energia_acumulada_wh = config?.energia_acumulada_wh,
-                fecha_medicion_consumo = config?.fecha_medicion_consumo
-            });
-        }
-
-        [HttpGet("status/all")]
-        public async Task<IActionResult> GetAllStatus([FromServices] PruebaaspContext context)
-        {
-            var connectedDevices = _connections.GetAllConnectedDeviceKeys().ToList();
-
-            // Buscar dispositivos WIFI/LAN locales en la BD
-            var localDevices = await context.Aparatos
-                .Include(a => a.ConfiguracionRed)
-                .Where(a => (a.metodo_vinculacion == "WIFI" || a.metodo_vinculacion == "LAN") 
-                            && a.ConfiguracionRed != null 
-                            && !string.IsNullOrEmpty(a.ConfiguracionRed.ip_address))
-                .ToListAsync();
-
-            if (localDevices.Any())
-            {
-                var tasks = localDevices.Select(async device =>
-                {
-                    try
-                    {
-                        var ip = device.ConfiguracionRed!.ip_address;
-                        using var client = new TcpClient();
-                        // Ping rápido con timeout de 1 segundo (1000ms)
-                        var connectTask = client.ConnectAsync(ip!, 5577);
-                        if (await Task.WhenAny(connectTask, Task.Delay(1000)) == connectTask)
-                        {
-                            // Conexion exitosa, reportar como en línea usando su IP o device_key según convenga
-                            // El frontend podría estar usando deviceKey o IP, añadimos el deviceKey si existe, o la IP.
-                            var identifier = !string.IsNullOrEmpty(device.ConfiguracionRed.device_key) 
-                                                ? device.ConfiguracionRed.device_key 
-                                                : ip;
-                            return identifier;
-                        }
-                    }
-                    catch { }
-                    return null;
-                });
-
-                var onlineLocalDevices = (await Task.WhenAll(tasks)).Where(id => id != null);
-                connectedDevices.AddRange(onlineLocalDevices!);
-            }
-
-            return Ok(new { connectedDevices });
-        }
-
-        [HttpGet("state/{sk_aparato_id}")]
-        public async Task<IActionResult> GetAparatoState(
-            int sk_aparato_id,
-            [FromServices] PruebaaspContext context)
-        {
-            var config = await context.AparatoConfiguracionesRed
-                .FirstOrDefaultAsync(c => c.sk_aparato_id == sk_aparato_id);
-
-            if (config == null || string.IsNullOrWhiteSpace(config.device_key))
-            {
-                return NotFound("El aparato no tiene configuración de red.");
-            }
-
-            var conectado = _connections.TryGetOpenSocket(config.device_key, out _);
-
-            return Ok(new
-            {
-                sk_aparato_id,
-                device_key = config.device_key,
-                estado_encendido = config.estado_encendido,
-                estado_encendido_2 = config.estado_encendido_2,
-                estado_encendido_3 = config.estado_encendido_3,
-                estado_encendido_4 = config.estado_encendido_4,
-                conectado,
-                fecha_estado_actualizado = config.fecha_estado_actualizado,
-                origen_estado = config.origen_estado,
-                corriente_a = config.corriente_actual,
-                potencia_w = config.potencia_actual,
-                energia_acumulada_wh = config.energia_acumulada_wh,
-                fecha_medicion_consumo = config.fecha_medicion_consumo
-            });
-        }
-
-        [HttpPost("toggle/{sk_aparato_id}")]
-        public async Task<IActionResult> ToggleAparato(
-            int sk_aparato_id, 
-            [FromQuery] bool estado,
-            [FromQuery] int? sk_gesto_id,
-            [FromServices] PruebaaspContext context,
-            CancellationToken cancellationToken)
-        {
-            var config = context.AparatoConfiguracionesRed
-                .Include(c => c.Aparato)
-                .FirstOrDefault(c => c.sk_aparato_id == sk_aparato_id);
-                
-            if (config == null || (string.IsNullOrWhiteSpace(config.device_key) && string.IsNullOrWhiteSpace(config.ip_address)))
-            {
-                return NotFound("El aparato no tiene configuración de red válida.");
-            }
-
-            string comando = estado ? "ON" : "OFF";
-            bool esWifiLocal = config.Aparato?.metodo_vinculacion == "WIFI" || config.Aparato?.metodo_vinculacion == "LAN";
-
-            if (esWifiLocal)
-            {
-                if (string.IsNullOrWhiteSpace(config.ip_address))
-                {
-                    return BadRequest("El dispositivo WIFI/LAN no tiene IP configurada.");
-                }
-                
-                try
-                {
-                    using var client = new TcpClient();
-                    await client.ConnectAsync(config.ip_address, 5577);
-                    byte[] commandBytes = estado 
-                        ? new byte[] { 0x71, 0x23, 0x0F, 0xA3 } 
-                        : new byte[] { 0x71, 0x24, 0x0F, 0xA4 };
-                    await client.GetStream().WriteAsync(commandBytes, 0, commandBytes.Length, cancellationToken);
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Error conectando al socket TCP WIFI/LAN en IP: {ip}", config.ip_address);
-                    return BadRequest("Fallo al conectar con el dispositivo WIFI/LAN en red local.");
-                }
-            }
-            else
-            {
-                if (!_connections.TryGetOpenSocket(config.device_key!, out var socket))
-                {
-                    return BadRequest("El dispositivo no está conectado actualmente.");
-                }
-
-                await socket!.SendAsync(
-                    Encoding.UTF8.GetBytes(comando),
-                    WebSocketMessageType.Text,
-                    true,
-                    cancellationToken);
-            }
-
-            await _stateService.ProcessOutboundCommandAsync(
-                config.sk_aparato_configuracion_red_id,
-                comando,
-                estado,
-                "toggle",
-                cancellationToken);
-
-            // === GUARDAR HISTORIAL DE ACTIVIDAD ===
-            try
-            {
-                var now = DateTime.UtcNow;
-                var nowOnly = DateOnly.FromDateTime(now);
-                var tiempo = context.Tiempos.FirstOrDefault(t => t.fecha_completa == nowOnly && t.hora_periodo == now.Hour);
-                if (tiempo == null)
-                {
-                    tiempo = new backend.Models.Tiempo {
-                        fecha_completa = nowOnly,
-                        anio = now.Year,
-                        mes_numero = now.Month,
-                        mes_nombre = now.ToString("MMMM"),
-                        dia_semana_nombre = now.ToString("dddd"),
-                        hora_periodo = now.Hour
-                    };
-                    context.Tiempos.Add(tiempo);
-                    context.SaveChanges();
-                }
-
-                // 1 es un ID de gesto por defecto si no se manda uno (ej. Toggle Manual)
-                int gestoIdToSave = sk_gesto_id ?? 1; 
-
-                var historial = new backend.Models.HistorialActividad {
-                    sk_usuario_id = config.Aparato?.sk_usuario_id ?? 1,
-                    sk_gesto_id = gestoIdToSave,
-                    sk_aparato_id = sk_aparato_id,
-                    sk_tiempo_id = tiempo.sk_tiempo_id,
-                    confianza_ia = 1.00m,
-                    tiempo_respuesta = 50,
-                    ejecucion_exitosa = true
-                };
-                context.HistorialActividades.Add(historial);
-                await context.SaveChangesAsync(cancellationToken);
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error al guardar el historial de actividad: {ex.Message}");
-            }
-
-            var mensaje_confirmacion = estado 
-                ? $"Encendiste {config.Aparato?.nombre_aparato}" 
-                : $"Apagaste {config.Aparato?.nombre_aparato}";
-
-            return Ok(new
-            {
-                success = true,
-                comando,
-                estado_encendido = estado,
-                estado_encendido_2 = config.estado_encendido_2,
-                estado_encendido_3 = config.estado_encendido_3,
-                estado_encendido_4 = config.estado_encendido_4,
-                fecha_estado_actualizado = DateTime.UtcNow,
-                mensaje_confirmacion
-            });
-        }
-
-        [HttpPost("toggle/{sk_aparato_id}/contacto/{contacto:int}")]
-        public async Task<IActionResult> ToggleAparatoContacto(
-            int sk_aparato_id,
-            int contacto,
-            [FromQuery] bool estado,
-            [FromQuery] int? sk_gesto_id,
-            [FromServices] PruebaaspContext context,
-            CancellationToken cancellationToken)
-        {
-            if (contacto is < 1 or > 4)
-            {
-                return BadRequest("El contacto debe estar entre 1 y 4.");
-            }
-
-            var config = context.AparatoConfiguracionesRed
-                .Include(c => c.Aparato)
-                .FirstOrDefault(c => c.sk_aparato_id == sk_aparato_id);
-            if (config == null || string.IsNullOrWhiteSpace(config.device_key))
-            {
-                return NotFound("El aparato no tiene configuración de red o deviceKey.");
-            }
-
-            if (!_connections.TryGetOpenSocket(config.device_key, out var socket))
-            {
-                return BadRequest("El dispositivo no está conectado actualmente.");
-            }
-
-            string estadoStr = estado ? "ON" : "OFF";
-            // Formato esperado por el firmware Arduino del MultiSocket: ON1, OFF1, ON2, OFF2....
-            string comando = $"{estadoStr}{contacto}";
-
-            await socket!.SendAsync(
-                Encoding.UTF8.GetBytes(comando),
-                WebSocketMessageType.Text,
-                true,
-                cancellationToken);
-
-            await _stateService.ProcessOutboundCommandAsync(
-                config.sk_aparato_configuracion_red_id,
-                comando,
-                estado,
-                "toggle",
-                cancellationToken);
-                
-            // === GUARDAR HISTORIAL DE ACTIVIDAD ===
-            try
-            {
-                var now = DateTime.UtcNow;
-                var nowOnly = DateOnly.FromDateTime(now);
-                var tiempo = context.Tiempos.FirstOrDefault(t => t.fecha_completa == nowOnly && t.hora_periodo == now.Hour);
-                if (tiempo == null)
-                {
-                    tiempo = new backend.Models.Tiempo {
-                        fecha_completa = nowOnly,
-                        anio = now.Year,
-                        mes_numero = now.Month,
-                        mes_nombre = now.ToString("MMMM"),
-                        dia_semana_nombre = now.ToString("dddd"),
-                        hora_periodo = now.Hour
-                    };
-                    context.Tiempos.Add(tiempo);
-                    context.SaveChanges();
-                }
-
-                // 1 es un ID de gesto por defecto si no se manda uno (ej. Toggle Manual)
-                int gestoIdToSave = sk_gesto_id ?? 1; 
-
-                var historial = new backend.Models.HistorialActividad {
-                    sk_usuario_id = config.Aparato?.sk_usuario_id ?? 1,
-                    sk_gesto_id = gestoIdToSave,
-                    sk_aparato_id = sk_aparato_id,
-                    sk_tiempo_id = tiempo.sk_tiempo_id,
-                    confianza_ia = 1.00m,
-                    tiempo_respuesta = 50,
-                    ejecucion_exitosa = true
-                };
-                context.HistorialActividades.Add(historial);
-                await context.SaveChangesAsync(cancellationToken);
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error al guardar el historial de actividad: {ex.Message}");
-            }
-
-            var mensaje_confirmacion = estado 
-                ? $"Encendiste {config.Aparato?.nombre_aparato}" 
-                : $"Apagaste {config.Aparato?.nombre_aparato}";
-
-            return Ok(new
-            {
-                success = true,
-                comando,
-                contacto,
-                estado_encendido = estado,
-                fecha_estado_actualizado = DateTime.UtcNow,
-                mensaje_confirmacion
-            });
-        }
-    }
-}
-</file>
-
 <file path="backend/Program.cs">
 using backend.Models;
 using Microsoft.EntityFrameworkCore;
@@ -114941,6 +114521,478 @@ static void AddParameter(DbCommand command, string name, object value)
     parameter.ParameterName = name;
     parameter.Value = value;
     command.Parameters.Add(parameter);
+}
+</file>
+
+<file path="backend/Controllers/Esp32WebSocketController.cs">
+using backend.Models;
+using backend.Services;
+using Microsoft.AspNetCore.Mvc;
+using System.Net.WebSockets;
+using System.Text;
+using Microsoft.EntityFrameworkCore;
+using System.Net.Sockets;
+
+namespace backend.Controllers
+{
+    [Route("ws")] 
+    public class Esp32WebSocketController : ControllerBase
+    {
+        private readonly Esp32ConnectionManager _connections;
+        private readonly Esp32MessageRouter _router;
+        private readonly Esp32DeviceStateService _stateService;
+        private readonly ILogger<Esp32WebSocketController> _logger;
+
+        public Esp32WebSocketController(
+            Esp32ConnectionManager connections,
+            Esp32MessageRouter router,
+            Esp32DeviceStateService stateService,
+            ILogger<Esp32WebSocketController> logger)
+        {
+            _connections = connections;
+            _router = router;
+            _stateService = stateService;
+            _logger = logger;
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> Connect(
+            [FromQuery] string deviceKey,
+            [FromQuery] string? token,
+            [FromQuery] string? targetDeviceKey,
+            [FromQuery] string? tipoAparato,
+            CancellationToken cancellationToken)
+        {
+            if (!HttpContext.WebSockets.IsWebSocketRequest)
+            {
+                return BadRequest("La ruta /ws solo acepta peticiones WebSocket.");
+            }
+
+            if (string.IsNullOrWhiteSpace(deviceKey))
+            {
+                return BadRequest("Falta el parametro deviceKey.");
+            }
+
+            var normalizedDeviceKey = deviceKey.Trim();
+            
+            var remoteIpAddress = HttpContext.Connection.RemoteIpAddress;
+            if (remoteIpAddress != null && remoteIpAddress.IsIPv4MappedToIPv6)
+            {
+                remoteIpAddress = remoteIpAddress.MapToIPv4();
+            }
+            var remoteIp = remoteIpAddress?.ToString();
+            
+            using var socket = await HttpContext.WebSockets.AcceptWebSocketAsync();
+
+            var sourceDevice = await _router.RegisterOrUpdateDeviceAsync(normalizedDeviceKey, token, tipoAparato, remoteIp, cancellationToken);
+
+            if (sourceDevice == null)
+            {
+                await socket.CloseAsync(
+                    WebSocketCloseStatus.PolicyViolation,
+                    "deviceKey no registrado en configuracion de red",
+                    cancellationToken);
+
+                return BadRequest("El deviceKey no esta registrado en la configuracion de red de un aparato activo.");
+            }
+
+            await _connections.AddOrReplaceAsync(normalizedDeviceKey, socket, cancellationToken);
+
+            _logger.LogInformation("ESP32 conectado: {DeviceKey}", normalizedDeviceKey);
+
+            try
+            {
+                await _router.ReceiveMessagesAsync(
+                    socket,
+                    sourceDevice.sk_aparato_configuracion_red_id,
+                    targetDeviceKey,
+                    cancellationToken);
+
+                return new EmptyResult();
+            }
+            finally
+            {
+                _connections.Remove(normalizedDeviceKey, socket);
+                _logger.LogInformation("ESP32 desconectado: {DeviceKey}", normalizedDeviceKey);
+            }
+        }
+
+        [HttpGet("accion")]
+        public async Task<IActionResult> EnviarComando(
+            [FromQuery] string comando,
+            [FromQuery] string deviceKey,
+            [FromServices] PruebaaspContext context,
+            CancellationToken cancellationToken)
+        {
+            if (!_connections.TryGetOpenSocket(deviceKey, out var socket))
+            {
+                return NotFound($"No existe una conexión activa para '{deviceKey}'.");
+            }
+
+            await socket!.SendAsync(
+                Encoding.UTF8.GetBytes(comando),
+                WebSocketMessageType.Text,
+                true,
+                cancellationToken);
+
+            var config = await context.AparatoConfiguracionesRed
+                .FirstOrDefaultAsync(c => c.device_key == deviceKey, cancellationToken);
+
+            if (config is not null)
+            {
+                var estado = _stateService.TryParsePowerState(comando);
+                await _stateService.ProcessOutboundCommandAsync(
+                    config.sk_aparato_configuracion_red_id,
+                    comando,
+                    estado,
+                    "accion",
+                    cancellationToken);
+            }
+
+            var contactoComando = _stateService.TryParseOutletCommand(comando, out var contacto, out _)
+                ? contacto
+                : (int?)null;
+
+            return Ok(new
+            {
+                deviceKey,
+                comando,
+                estado_encendido = _stateService.TryParsePowerState(comando),
+                contacto = contactoComando
+            });
+        }
+
+        [HttpGet("status/{deviceKey}")]
+        public async Task<IActionResult> GetStatus(
+            string deviceKey,
+            [FromServices] PruebaaspContext context)
+        {
+            if (string.IsNullOrWhiteSpace(deviceKey))
+            {
+                return BadRequest(new { error = "Falta el parámetro deviceKey." });
+            }
+
+            bool isConnected = _connections.TryGetOpenSocket(deviceKey, out _);
+            var config = await context.AparatoConfiguracionesRed
+                .FirstOrDefaultAsync(c => c.device_key == deviceKey);
+
+            return Ok(new
+            {
+                connected = isConnected,
+                estado_encendido = config?.estado_encendido,
+                estado_encendido_2 = config?.estado_encendido_2,
+                estado_encendido_3 = config?.estado_encendido_3,
+                estado_encendido_4 = config?.estado_encendido_4,
+                fecha_estado_actualizado = config?.fecha_estado_actualizado,
+                origen_estado = config?.origen_estado,
+                corriente_a = config?.corriente_actual,
+                potencia_w = config?.potencia_actual,
+                energia_acumulada_wh = config?.energia_acumulada_wh,
+                fecha_medicion_consumo = config?.fecha_medicion_consumo
+            });
+        }
+
+        [HttpGet("status/all")]
+        public async Task<IActionResult> GetAllStatus([FromServices] PruebaaspContext context)
+        {
+            var connectedDevices = _connections.GetAllConnectedDeviceKeys().ToList();
+
+            // Buscar dispositivos WIFI/LAN locales en la BD
+            var localDevices = await context.Aparatos
+                .Include(a => a.ConfiguracionRed)
+                .Where(a => (a.metodo_vinculacion == "WIFI" || a.metodo_vinculacion == "LAN") 
+                            && a.ConfiguracionRed != null 
+                            && !string.IsNullOrEmpty(a.ConfiguracionRed.ip_address))
+                .ToListAsync();
+
+            if (localDevices.Any())
+            {
+                var tasks = localDevices.Select(async device =>
+                {
+                    try
+                    {
+                        var ip = device.ConfiguracionRed!.ip_address;
+                        using var client = new TcpClient();
+                        // Ping rápido con timeout de 1 segundo (1000ms)
+                        var connectTask = client.ConnectAsync(ip!, 5577);
+                        if (await Task.WhenAny(connectTask, Task.Delay(1000)) == connectTask)
+                        {
+                            // Conexion exitosa, reportar como en línea usando su IP o device_key según convenga
+                            // El frontend podría estar usando deviceKey o IP, añadimos el deviceKey si existe, o la IP.
+                            var identifier = !string.IsNullOrEmpty(device.ConfiguracionRed.device_key) 
+                                                ? device.ConfiguracionRed.device_key 
+                                                : ip;
+                            return identifier;
+                        }
+                    }
+                    catch { }
+                    return null;
+                });
+
+                var onlineLocalDevices = (await Task.WhenAll(tasks)).Where(id => id != null);
+                connectedDevices.AddRange(onlineLocalDevices!);
+            }
+
+            return Ok(new { connectedDevices });
+        }
+
+        [HttpGet("state/{sk_aparato_id}")]
+        public async Task<IActionResult> GetAparatoState(
+            int sk_aparato_id,
+            [FromServices] PruebaaspContext context)
+        {
+            var config = await context.AparatoConfiguracionesRed
+                .FirstOrDefaultAsync(c => c.sk_aparato_id == sk_aparato_id);
+
+            if (config == null || string.IsNullOrWhiteSpace(config.device_key))
+            {
+                return NotFound("El aparato no tiene configuración de red.");
+            }
+
+            var conectado = _connections.TryGetOpenSocket(config.device_key, out _);
+
+            return Ok(new
+            {
+                sk_aparato_id,
+                device_key = config.device_key,
+                estado_encendido = config.estado_encendido,
+                estado_encendido_2 = config.estado_encendido_2,
+                estado_encendido_3 = config.estado_encendido_3,
+                estado_encendido_4 = config.estado_encendido_4,
+                conectado,
+                fecha_estado_actualizado = config.fecha_estado_actualizado,
+                origen_estado = config.origen_estado,
+                corriente_a = config.corriente_actual,
+                potencia_w = config.potencia_actual,
+                energia_acumulada_wh = config.energia_acumulada_wh,
+                fecha_medicion_consumo = config.fecha_medicion_consumo
+            });
+        }
+
+        [HttpPost("toggle/{sk_aparato_id}")]
+        public async Task<IActionResult> ToggleAparato(
+            int sk_aparato_id, 
+            [FromQuery] bool estado,
+            [FromQuery] int? sk_gesto_id,
+            [FromServices] PruebaaspContext context,
+            CancellationToken cancellationToken)
+        {
+            var config = context.AparatoConfiguracionesRed
+                .Include(c => c.Aparato)
+                .ThenInclude(a => a.Tipo)
+                .FirstOrDefault(c => c.sk_aparato_id == sk_aparato_id);
+                
+            if (config == null || (string.IsNullOrWhiteSpace(config.device_key) && string.IsNullOrWhiteSpace(config.ip_address)))
+            {
+                return NotFound("El aparato no tiene configuración de red válida.");
+            }
+
+            bool esCamara = config.Aparato?.Tipo?.nombre_tipo == "Cámara" || config.Aparato?.Tipo?.nombre_tipo == "Camara";
+            string comando = esCamara 
+                ? (estado ? "LED_ON" : "LED_OFF")
+                : (estado ? "ON" : "OFF");
+
+            bool esWifiLocal = config.Aparato?.metodo_vinculacion == "WIFI" || config.Aparato?.metodo_vinculacion == "LAN";
+
+            if (esWifiLocal)
+            {
+                if (string.IsNullOrWhiteSpace(config.ip_address))
+                {
+                    return BadRequest("El dispositivo WIFI/LAN no tiene IP configurada.");
+                }
+                
+                try
+                {
+                    using var client = new TcpClient();
+                    await client.ConnectAsync(config.ip_address, 5577);
+                    byte[] commandBytes = estado 
+                        ? new byte[] { 0x71, 0x23, 0x0F, 0xA3 } 
+                        : new byte[] { 0x71, 0x24, 0x0F, 0xA4 };
+                    await client.GetStream().WriteAsync(commandBytes, 0, commandBytes.Length, cancellationToken);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error conectando al socket TCP WIFI/LAN en IP: {ip}", config.ip_address);
+                    return BadRequest("Fallo al conectar con el dispositivo WIFI/LAN en red local.");
+                }
+            }
+            else
+            {
+                if (!_connections.TryGetOpenSocket(config.device_key!, out var socket))
+                {
+                    return BadRequest("El dispositivo no está conectado actualmente.");
+                }
+
+                await socket!.SendAsync(
+                    Encoding.UTF8.GetBytes(comando),
+                    WebSocketMessageType.Text,
+                    true,
+                    cancellationToken);
+            }
+
+            await _stateService.ProcessOutboundCommandAsync(
+                config.sk_aparato_configuracion_red_id,
+                comando,
+                estado,
+                "toggle",
+                cancellationToken);
+
+            // === GUARDAR HISTORIAL DE ACTIVIDAD ===
+            try
+            {
+                var now = DateTime.UtcNow;
+                var nowOnly = DateOnly.FromDateTime(now);
+                var tiempo = context.Tiempos.FirstOrDefault(t => t.fecha_completa == nowOnly && t.hora_periodo == now.Hour);
+                if (tiempo == null)
+                {
+                    tiempo = new backend.Models.Tiempo {
+                        fecha_completa = nowOnly,
+                        anio = now.Year,
+                        mes_numero = now.Month,
+                        mes_nombre = now.ToString("MMMM"),
+                        dia_semana_nombre = now.ToString("dddd"),
+                        hora_periodo = now.Hour
+                    };
+                    context.Tiempos.Add(tiempo);
+                    context.SaveChanges();
+                }
+
+                // 1 es un ID de gesto por defecto si no se manda uno (ej. Toggle Manual)
+                int gestoIdToSave = sk_gesto_id ?? 1; 
+
+                var historial = new backend.Models.HistorialActividad {
+                    sk_usuario_id = config.Aparato?.sk_usuario_id ?? 1,
+                    sk_gesto_id = gestoIdToSave,
+                    sk_aparato_id = sk_aparato_id,
+                    sk_tiempo_id = tiempo.sk_tiempo_id,
+                    confianza_ia = 1.00m,
+                    tiempo_respuesta = 50,
+                    ejecucion_exitosa = true
+                };
+                context.HistorialActividades.Add(historial);
+                await context.SaveChangesAsync(cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error al guardar el historial de actividad: {ex.Message}");
+            }
+
+            var mensaje_confirmacion = estado 
+                ? $"Encendiste {config.Aparato?.nombre_aparato}" 
+                : $"Apagaste {config.Aparato?.nombre_aparato}";
+
+            return Ok(new
+            {
+                success = true,
+                comando,
+                estado_encendido = estado,
+                estado_encendido_2 = config.estado_encendido_2,
+                estado_encendido_3 = config.estado_encendido_3,
+                estado_encendido_4 = config.estado_encendido_4,
+                fecha_estado_actualizado = DateTime.UtcNow,
+                mensaje_confirmacion
+            });
+        }
+
+        [HttpPost("toggle/{sk_aparato_id}/contacto/{contacto:int}")]
+        public async Task<IActionResult> ToggleAparatoContacto(
+            int sk_aparato_id,
+            int contacto,
+            [FromQuery] bool estado,
+            [FromQuery] int? sk_gesto_id,
+            [FromServices] PruebaaspContext context,
+            CancellationToken cancellationToken)
+        {
+            if (contacto is < 1 or > 4)
+            {
+                return BadRequest("El contacto debe estar entre 1 y 4.");
+            }
+
+            var config = context.AparatoConfiguracionesRed
+                .Include(c => c.Aparato)
+                .FirstOrDefault(c => c.sk_aparato_id == sk_aparato_id);
+            if (config == null || string.IsNullOrWhiteSpace(config.device_key))
+            {
+                return NotFound("El aparato no tiene configuración de red o deviceKey.");
+            }
+
+            if (!_connections.TryGetOpenSocket(config.device_key, out var socket))
+            {
+                return BadRequest("El dispositivo no está conectado actualmente.");
+            }
+
+            string estadoStr = estado ? "ON" : "OFF";
+            // Formato esperado por el firmware Arduino del MultiSocket: ON1, OFF1, ON2, OFF2....
+            string comando = $"{estadoStr}{contacto}";
+
+            await socket!.SendAsync(
+                Encoding.UTF8.GetBytes(comando),
+                WebSocketMessageType.Text,
+                true,
+                cancellationToken);
+
+            await _stateService.ProcessOutboundCommandAsync(
+                config.sk_aparato_configuracion_red_id,
+                comando,
+                estado,
+                "toggle",
+                cancellationToken);
+                
+            // === GUARDAR HISTORIAL DE ACTIVIDAD ===
+            try
+            {
+                var now = DateTime.UtcNow;
+                var nowOnly = DateOnly.FromDateTime(now);
+                var tiempo = context.Tiempos.FirstOrDefault(t => t.fecha_completa == nowOnly && t.hora_periodo == now.Hour);
+                if (tiempo == null)
+                {
+                    tiempo = new backend.Models.Tiempo {
+                        fecha_completa = nowOnly,
+                        anio = now.Year,
+                        mes_numero = now.Month,
+                        mes_nombre = now.ToString("MMMM"),
+                        dia_semana_nombre = now.ToString("dddd"),
+                        hora_periodo = now.Hour
+                    };
+                    context.Tiempos.Add(tiempo);
+                    context.SaveChanges();
+                }
+
+                // 1 es un ID de gesto por defecto si no se manda uno (ej. Toggle Manual)
+                int gestoIdToSave = sk_gesto_id ?? 1; 
+
+                var historial = new backend.Models.HistorialActividad {
+                    sk_usuario_id = config.Aparato?.sk_usuario_id ?? 1,
+                    sk_gesto_id = gestoIdToSave,
+                    sk_aparato_id = sk_aparato_id,
+                    sk_tiempo_id = tiempo.sk_tiempo_id,
+                    confianza_ia = 1.00m,
+                    tiempo_respuesta = 50,
+                    ejecucion_exitosa = true
+                };
+                context.HistorialActividades.Add(historial);
+                await context.SaveChangesAsync(cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error al guardar el historial de actividad: {ex.Message}");
+            }
+
+            var mensaje_confirmacion = estado 
+                ? $"Encendiste {config.Aparato?.nombre_aparato}" 
+                : $"Apagaste {config.Aparato?.nombre_aparato}";
+
+            return Ok(new
+            {
+                success = true,
+                comando,
+                contacto,
+                estado_encendido = estado,
+                fecha_estado_actualizado = DateTime.UtcNow,
+                mensaje_confirmacion
+            });
+        }
+    }
 }
 </file>
 
