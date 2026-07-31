@@ -137,6 +137,60 @@ public class AparatosController : ControllerBase
         return historico;
     }
 
+    [HttpPost("{sk_aparato_id}/consumo")]
+    public async Task<ActionResult<AparatoConsumoDto>> RegistrarConsumoAparato(
+        int sk_aparato_id,
+        [FromBody] RegistrarConsumoDto dto)
+    {
+        var usuarioId = (int?)HttpContext.Items["UsuarioId"];
+        if (usuarioId == null || usuarioId == 0)
+        {
+            return Unauthorized(new { message = "Usuario no autenticado" });
+        }
+
+        var aparato = await _context.Aparatos
+            .Include(a => a.ConfiguracionRed)
+            .FirstOrDefaultAsync(a => a.sk_aparato_id == sk_aparato_id && a.sk_usuario_id == usuarioId);
+
+        if (aparato?.ConfiguracionRed == null)
+        {
+            return NotFound("El aparato no tiene configuración de red o no pertenece al usuario.");
+        }
+
+        var config = aparato.ConfiguracionRed;
+        var fechaMedicion = dto?.FechaMedicion ?? DateTime.UtcNow;
+        decimal potenciaW = dto?.PotenciaW ?? 0m;
+        decimal corrienteA = dto?.CorrienteA ?? 0m;
+        decimal energiaWh = dto?.EnergiaWh ?? ((config.energia_acumulada_wh ?? 0m) + (potenciaW > 0 ? potenciaW / 1000m : 0m));
+
+        config.corriente_actual = corrienteA;
+        config.potencia_actual = potenciaW;
+        config.energia_acumulada_wh = energiaWh;
+        config.fecha_medicion_consumo = fechaMedicion;
+
+        var nuevoConsumo = new AparatoConsumoHistorico
+        {
+            sk_aparato_configuracion_red_id = config.sk_aparato_configuracion_red_id,
+            corriente_a = corrienteA,
+            potencia_w = potenciaW,
+            energia_wh = energiaWh,
+            fecha_medicion = fechaMedicion
+        };
+
+        _context.AparatoConsumoHistoricos.Add(nuevoConsumo);
+        await _context.SaveChangesAsync();
+
+        return Ok(new AparatoConsumoDto
+        {
+            SkConsumoId = nuevoConsumo.sk_consumo_id,
+            SkAparatoId = sk_aparato_id,
+            CorrienteA = nuevoConsumo.corriente_a,
+            PotenciaW = nuevoConsumo.potencia_w,
+            EnergiaWh = nuevoConsumo.energia_wh,
+            FechaMedicion = nuevoConsumo.fecha_medicion
+        });
+    }
+
     [HttpGet("{sk_aparato_id}/consumo/resumen")]
     public async Task<ActionResult<AparatoConsumoResumenDto>> GetConsumoResumen(
         int sk_aparato_id,
