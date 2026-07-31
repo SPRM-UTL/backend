@@ -245,10 +245,12 @@ public class GestosController : ControllerBase
             return BadRequest();
         }
 
-        bool isCombo = dto.TipoDisparadorNombre != null &&
-                       (dto.TipoDisparadorNombre.ToUpper().Contains("COMBO") ||
-                        dto.TipoDisparadorNombre.ToUpper().Contains("SECUENCIA") ||
-                        dto.TipoDisparadorNombre.ToUpper().Contains("VOZ"));
+        bool isCombo = (dto.Pasos != null && dto.Pasos.Any()) ||
+                       !string.IsNullOrEmpty(dto.FraseVozActivadora) ||
+                       (dto.TipoDisparadorNombre != null &&
+                        (dto.TipoDisparadorNombre.ToUpper().Contains("COMBO") ||
+                         dto.TipoDisparadorNombre.ToUpper().Contains("SECUENCIA") ||
+                         dto.TipoDisparadorNombre.ToUpper().Contains("VOZ")));
 
         if (!isCombo && !GestosValidos.Contains(dto.NombreGesto))
         {
@@ -307,10 +309,12 @@ public class GestosController : ControllerBase
     [HttpPost]
     public async Task<ActionResult<GestoDto>> PostGesto(GestoDto dto)
     {
-        bool isCombo = dto.TipoDisparadorNombre != null &&
-                       (dto.TipoDisparadorNombre.ToUpper().Contains("COMBO") ||
-                        dto.TipoDisparadorNombre.ToUpper().Contains("SECUENCIA") ||
-                        dto.TipoDisparadorNombre.ToUpper().Contains("VOZ"));
+        bool isCombo = (dto.Pasos != null && dto.Pasos.Any()) ||
+                       !string.IsNullOrEmpty(dto.FraseVozActivadora) ||
+                       (dto.TipoDisparadorNombre != null &&
+                        (dto.TipoDisparadorNombre.ToUpper().Contains("COMBO") ||
+                         dto.TipoDisparadorNombre.ToUpper().Contains("SECUENCIA") ||
+                         dto.TipoDisparadorNombre.ToUpper().Contains("VOZ")));
 
         if (!isCombo && !GestosValidos.Contains(dto.NombreGesto))
         {
