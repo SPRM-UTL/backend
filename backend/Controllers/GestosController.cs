@@ -245,16 +245,14 @@ public class GestosController : ControllerBase
             return BadRequest();
         }
 
-        bool isCombo = (dto.Pasos != null && dto.Pasos.Any()) ||
-                       !string.IsNullOrEmpty(dto.FraseVozActivadora) ||
-                       (dto.TipoDisparadorNombre != null &&
-                        (dto.TipoDisparadorNombre.ToUpper().Contains("COMBO") ||
-                         dto.TipoDisparadorNombre.ToUpper().Contains("SECUENCIA") ||
-                         dto.TipoDisparadorNombre.ToUpper().Contains("VOZ")));
+        bool tieneContenido = (dto.Pasos != null && dto.Pasos.Any()) ||
+                              !string.IsNullOrEmpty(dto.FraseVozActivadora) ||
+                              dto.SkAparatoId.HasValue ||
+                              !string.IsNullOrEmpty(dto.TipoDisparadorNombre);
 
-        if (!isCombo && !GestosValidos.Contains(dto.NombreGesto))
+        if (!tieneContenido && string.IsNullOrWhiteSpace(dto.NombreGesto))
         {
-            return BadRequest("Gesto no reconocido. Debe seleccionar un gesto válido.");
+            return BadRequest("El gesto debe tener al menos un nombre.");
         }
 
         var usuarioId = (int?)HttpContext.Items["UsuarioId"];
@@ -309,16 +307,15 @@ public class GestosController : ControllerBase
     [HttpPost]
     public async Task<ActionResult<GestoDto>> PostGesto(GestoDto dto)
     {
-        bool isCombo = (dto.Pasos != null && dto.Pasos.Any()) ||
-                       !string.IsNullOrEmpty(dto.FraseVozActivadora) ||
-                       (dto.TipoDisparadorNombre != null &&
-                        (dto.TipoDisparadorNombre.ToUpper().Contains("COMBO") ||
-                         dto.TipoDisparadorNombre.ToUpper().Contains("SECUENCIA") ||
-                         dto.TipoDisparadorNombre.ToUpper().Contains("VOZ")));
+        // Un gesto es válido si: tiene nombre, O tiene pasos (combo), O tiene dispositivo asignado, O tiene frase de voz
+        bool tieneContenido = (dto.Pasos != null && dto.Pasos.Any()) ||
+                              !string.IsNullOrEmpty(dto.FraseVozActivadora) ||
+                              dto.SkAparatoId.HasValue ||
+                              !string.IsNullOrEmpty(dto.TipoDisparadorNombre);
 
-        if (!isCombo && !GestosValidos.Contains(dto.NombreGesto))
+        if (!tieneContenido && string.IsNullOrWhiteSpace(dto.NombreGesto))
         {
-            return BadRequest("Gesto no reconocido. Debe seleccionar un gesto válido.");
+            return BadRequest("El gesto debe tener al menos un nombre.");
         }
 
         var usuarioId = (int?)HttpContext.Items["UsuarioId"];
