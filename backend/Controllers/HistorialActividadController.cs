@@ -31,7 +31,7 @@ namespace backend.Controllers
                 .Include(h => h.Aparato)
                     .ThenInclude(a => a.Tipo)
                 .Include(h => h.Gesto)
-                .Where(h => h.sk_usuario_id == usuarioId)
+                .Where(h => h.Aparato != null && h.Aparato.sk_usuario_id == usuarioId)
                 .OrderByDescending(h => h.sk_actividad_id)
                 .ToListAsync(); // Resolvemos la consulta SQL aquí de forma limpia
 
