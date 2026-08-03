@@ -65,11 +65,6 @@ namespace backend.Controllers
                 })
                 .ToListAsync();
 
-            if (!historico.Any())
-            {
-                return NotFound("No se encontraron registros de consumo para tus aparatos.");
-            }
-
             return Ok(historico);
         }
 
