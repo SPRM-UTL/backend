@@ -74,7 +74,7 @@ try
             new AparatoTipo { sk_aparato_tipo_id = 14, nombre_tipo = "Lampara Inteligente", es_asistente = false, icono = "plug", soporta_wifi = true, soporta_bluetooth = true, palabras_clave_busqueda = "", orden = 2, requiere_vinculacion_bluetooth = true },
             new AparatoTipo { sk_aparato_tipo_id = 15, nombre_tipo = "MultiSocket", es_asistente = false, icono = "lucide_lightbulb", soporta_wifi = true, soporta_bluetooth = true, palabras_clave_busqueda = "", orden = 3, requiere_vinculacion_bluetooth = false },
             new AparatoTipo { sk_aparato_tipo_id = 16, nombre_tipo = "ESP32-CAM", es_asistente = false, icono = "videocam", soporta_wifi = true, soporta_bluetooth = true, palabras_clave_busqueda = "", orden = 1, requiere_vinculacion_bluetooth = false },
-            new AparatoTipo { sk_aparato_tipo_id = 17, nombre_tipo = "Socket Generico", es_asistente = false, icono = "plug", soporta_wifi = false, soporta_bluetooth = true, palabras_clave_busqueda = "", orden = 99, requiere_vinculacion_bluetooth = false },
+            new AparatoTipo { sk_aparato_tipo_id = 17, nombre_tipo = "Socket Generico", es_asistente = false, icono = "plug", soporta_wifi = true, soporta_bluetooth = false, palabras_clave_busqueda = "", orden = 99, requiere_vinculacion_bluetooth = false },
             new AparatoTipo { sk_aparato_tipo_id = 18, nombre_tipo = "Ventilador Inteligente", es_asistente = false, icono = "wind", soporta_wifi = true, soporta_bluetooth = true, palabras_clave_busqueda = "FAN,VENTILADOR,VENTILADORES,PWM,VELOCIDAD,DC MOTOR", orden = 4, requiere_vinculacion_bluetooth = false }
         };
 
