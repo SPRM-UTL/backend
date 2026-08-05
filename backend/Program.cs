@@ -69,86 +69,55 @@ try
         var db = scope.ServiceProvider.GetRequiredService<PruebaaspContext>();
 
         // Seeder dinámico de tipos de aparatos
-        // if (!db.AparatoTipos.Any(t => t.nombre_tipo == "Asistente"))
-        //     db.AparatoTipos.Add(new AparatoTipo { nombre_tipo = "Asistente", icono = "ic_input_add", es_asistente = true, soporta_wifi = true, soporta_bluetooth = false, orden = 1, palabras_clave_busqueda = null });
-        
-        // if (!db.AparatoTipos.Any(t => t.nombre_tipo == "Focos"))
-        //     db.AparatoTipos.Add(new AparatoTipo { nombre_tipo = "Focos", icono = "lightbulb", es_asistente = false, soporta_wifi = true, soporta_bluetooth = false, orden = 2, palabras_clave_busqueda = "FOCO,LIGHT,BULB,LAMP" });
+        var tiposDeseados = new List<AparatoTipo>
+        {
+            new AparatoTipo { sk_aparato_tipo_id = 14, nombre_tipo = "Lampara Inteligente", es_asistente = false, icono = "plug", soporta_wifi = true, soporta_bluetooth = true, palabras_clave_busqueda = "", orden = 2, requiere_vinculacion_bluetooth = true },
+            new AparatoTipo { sk_aparato_tipo_id = 15, nombre_tipo = "MultiSocket", es_asistente = false, icono = "lucide_lightbulb", soporta_wifi = true, soporta_bluetooth = true, palabras_clave_busqueda = "", orden = 3, requiere_vinculacion_bluetooth = false },
+            new AparatoTipo { sk_aparato_tipo_id = 16, nombre_tipo = "ESP32-CAM", es_asistente = false, icono = "videocam", soporta_wifi = true, soporta_bluetooth = true, palabras_clave_busqueda = "", orden = 1, requiere_vinculacion_bluetooth = false },
+            new AparatoTipo { sk_aparato_tipo_id = 17, nombre_tipo = "Socket Generico", es_asistente = false, icono = "plug", soporta_wifi = false, soporta_bluetooth = true, palabras_clave_busqueda = "", orden = 99, requiere_vinculacion_bluetooth = false },
+            new AparatoTipo { sk_aparato_tipo_id = 18, nombre_tipo = "Ventilador Inteligente", es_asistente = false, icono = "wind", soporta_wifi = true, soporta_bluetooth = true, palabras_clave_busqueda = "FAN,VENTILADOR,VENTILADORES,PWM,VELOCIDAD,DC MOTOR", orden = 4, requiere_vinculacion_bluetooth = false }
+        };
 
-        // if (!db.AparatoTipos.Any(t => t.nombre_tipo == "Enchufe"))
-        //     db.AparatoTipos.Add(new AparatoTipo { nombre_tipo = "Enchufe", icono = "plug", es_asistente = false, soporta_wifi = true, soporta_bluetooth = true, requiere_vinculacion_bluetooth = false, orden = 3, palabras_clave_busqueda = "SOCKET,PLUG,ENCHUFE,SMARTPLUG" });
-
-        if (!db.AparatoTipos.Any(t => t.nombre_tipo == "Sockets Inteligentes"))
-            db.AparatoTipos.Add(new AparatoTipo { nombre_tipo = "Sockets Inteligentes", icono = "plug", es_asistente = false, soporta_wifi = true, soporta_bluetooth = true, orden = 4, palabras_clave_busqueda = "SOCKET,PLUG,SMARTPLUG" });
-
-        if (!db.AparatoTipos.Any(t => t.nombre_tipo == "MultiSocket"))
-            db.AparatoTipos.Add(new AparatoTipo { nombre_tipo = "MultiSocket", icono = "plug", es_asistente = false, soporta_wifi = true, soporta_bluetooth = true, requiere_vinculacion_bluetooth = false, orden = 5, palabras_clave_busqueda = "MULTISOCKET,MULTI SOCKET,REGLETA,POWERSTRIP,POWER STRIP,MULTIENCHUFE,CONTACTO,CONTACTOS,SOCKET,PLUG" });
-
-        // if (!db.AparatoTipos.Any(t => t.nombre_tipo == "Ventilador"))
-        //     db.AparatoTipos.Add(new AparatoTipo { nombre_tipo = "Ventilador", icono = "wind", es_asistente = false, soporta_wifi = true, soporta_bluetooth = true, requiere_vinculacion_bluetooth = false, orden = 6, palabras_clave_busqueda = "FAN,VENTILADOR" });
-
-        if (!db.AparatoTipos.Any(t => t.nombre_tipo == "Ventilador Inteligente"))
-            db.AparatoTipos.Add(new AparatoTipo { nombre_tipo = "Ventilador Inteligente", icono = "wind", es_asistente = false, soporta_wifi = true, soporta_bluetooth = true, requiere_vinculacion_bluetooth = false, orden = 6, palabras_clave_busqueda = "FAN,VENTILADOR,VENTILADORES,PWM,VELOCIDAD,DC MOTOR" });
-
-        if (!db.AparatoTipos.Any(t => t.nombre_tipo == "Cámara"))
-            db.AparatoTipos.Add(new AparatoTipo { nombre_tipo = "Cámara", icono = "videocam", es_asistente = false, soporta_wifi = true, soporta_bluetooth = true, requiere_vinculacion_bluetooth = false, orden = 7, palabras_clave_busqueda = "CAM,CAMERA,CAMARA,WEBCAM,VIDEO" });
-
-
-        // if (!db.AparatoTipos.Any(t => t.nombre_tipo == "Televisión"))
-        //     db.AparatoTipos.Add(new AparatoTipo { nombre_tipo = "Televisión", icono = "tv_minimal", es_asistente = false, soporta_wifi = true, soporta_bluetooth = false, orden = 6, palabras_clave_busqueda = "TV,TELEVISION,SCREEN,DISPLAY" });
-
-        // if (!db.AparatoTipos.Any(t => t.nombre_tipo == "Bocinas"))
-        //     db.AparatoTipos.Add(new AparatoTipo { nombre_tipo = "Bocinas", icono = "speaker", es_asistente = false, soporta_wifi = true, soporta_bluetooth = false, orden = 7, palabras_clave_busqueda = "SPEAKER,BOCINA,ALTAVOZ,SOUNDBAR,CHARGE,FLIP,XTREME,BOOMBOX,SOUNDLINK" });
-
-        // if (!db.AparatoTipos.Any(t => t.nombre_tipo == "Audífonos"))
-        //     db.AparatoTipos.Add(new AparatoTipo { nombre_tipo = "Audífonos", icono = "headphones", es_asistente = false, soporta_wifi = true, soporta_bluetooth = false, orden = 8, palabras_clave_busqueda = "HEADPHONE,HEADSET,EARPHONE,EARBUDS,AUDIFONOS,AUDÍFONOS,AURICULAR,AUT,TWS,BUDS,AIRPOD,WH-,WF-,QC,TUNE,FREEBUDS" });
-
-        // if (!db.AparatoTipos.Any(t => t.nombre_tipo == "Luces"))
-        //     db.AparatoTipos.Add(new AparatoTipo { nombre_tipo = "Luces", icono = "lamp_floor", es_asistente = false, soporta_wifi = true, soporta_bluetooth = false, orden = 9, palabras_clave_busqueda = "STRIP,TIRA,LUCES,LED,LAMP" });
-
-        db.SaveChanges(); // Guardar nuevas adiciones antes de buscar para actualizar
-
-        // Actualizar iconos y métodos de configuración de aparatos existentes si no tienen
-        var tipos = db.AparatoTipos.ToList();
-        foreach (var tipo in tipos) {
-            var usaWifiBluetooth =
-                tipo.nombre_tipo == "Sockets Inteligentes" ||
-                tipo.nombre_tipo == "MultiSocket" ||
-                tipo.nombre_tipo == "Ventilador Inteligente" ||
-                tipo.nombre_tipo == "Cámara";
-
-            // Forzar configuración WiFi-only por defecto a los antiguos
-            if (!usaWifiBluetooth) {
-                tipo.soporta_bluetooth = false;
-                tipo.soporta_wifi = true;
-            } else {
-                tipo.soporta_bluetooth = true;
-                tipo.soporta_wifi = true;
-                
-                if (tipo.nombre_tipo == "MultiSocket" ||
-                    tipo.nombre_tipo == "Ventilador Inteligente" ||
-                    tipo.nombre_tipo == "Cámara") {
-                    tipo.requiere_vinculacion_bluetooth = false;
-                }
+        foreach (var deseado in tiposDeseados)
+        {
+            var existente = db.AparatoTipos.FirstOrDefault(t => t.sk_aparato_tipo_id == deseado.sk_aparato_tipo_id || t.nombre_tipo == deseado.nombre_tipo);
+            if (existente == null)
+            {
+                db.AparatoTipos.Add(deseado);
             }
-
-            if (string.IsNullOrEmpty(tipo.icono) || tipo.orden == 99 || tipo.orden == 0) {
-                switch (tipo.nombre_tipo) {
-                    // case "Asistente": tipo.icono = "ic_input_add"; tipo.orden = 1; break;
-                    // case "Focos": tipo.icono = "lightbulb"; tipo.orden = 2; break;
-                    // case "Enchufe": tipo.icono = "plug"; tipo.orden = 3; break;
-                    case "Sockets Inteligentes": tipo.icono = "plug"; tipo.orden = 4; break;
-                    case "MultiSocket": tipo.icono = "plug"; tipo.orden = 5; break;
-                    case "Ventilador Inteligente": tipo.icono = "wind"; tipo.orden = 6; break;
-                    case "Cámara": tipo.icono = "videocam"; tipo.orden = 7; break;
-                    // case "Televisión": tipo.icono = "tv_minimal"; tipo.orden = 6; break;
-                    // case "Bocinas": tipo.icono = "speaker"; tipo.orden = 7; break;
-                    // case "Audífonos": tipo.icono = "headphones"; tipo.orden = 8; break;
-                    // case "Luces": tipo.icono = "lamp_floor"; tipo.orden = 9; break;
-                }
+            else
+            {
+                existente.nombre_tipo = deseado.nombre_tipo;
+                existente.icono = deseado.icono;
+                existente.es_asistente = deseado.es_asistente;
+                existente.soporta_wifi = deseado.soporta_wifi;
+                existente.soporta_bluetooth = deseado.soporta_bluetooth;
+                existente.palabras_clave_busqueda = deseado.palabras_clave_busqueda;
+                existente.orden = deseado.orden;
+                existente.requiere_vinculacion_bluetooth = deseado.requiere_vinculacion_bluetooth;
             }
         }
         db.SaveChanges();
+
+        // Eliminar los tipos de aparatos que no estén en la lista deseada
+        var idsDeseados = tiposDeseados.Select(t => t.sk_aparato_tipo_id).ToList();
+        var nombresDeseados = tiposDeseados.Select(t => t.nombre_tipo).ToList();
+        var tiposAEliminar = db.AparatoTipos
+            .Where(t => !idsDeseados.Contains(t.sk_aparato_tipo_id) && !nombresDeseados.Contains(t.nombre_tipo))
+            .ToList();
+
+        if (tiposAEliminar.Any())
+        {
+            try
+            {
+                db.AparatoTipos.RemoveRange(tiposAEliminar);
+                db.SaveChanges();
+            }
+            catch (Exception ex)
+            {
+                app.Logger.LogWarning(ex, "No se pudieron eliminar algunos tipos de aparatos antiguos (posiblemente en uso por llaves foráneas).");
+            }
+        }
     }
 }
 catch (Exception ex)
